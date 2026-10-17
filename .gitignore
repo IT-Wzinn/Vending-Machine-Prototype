@@ -1,0 +1,178 @@
+# =============================================================
+# Vending Machine Prototype — .gitignore
+# Covers: Java/Maven, Spring Boot, Node.js/React/Vite,
+#         Arduino/PlatformIO (ESP32 firmware), IDEs, OS files
+# =============================================================
+
+# ─────────────────────────────────────────────
+# CRITICAL: Environment files & secrets
+# ─────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+*.env
+secrets/
+credentials/
+
+# ─────────────────────────────────────────────
+# Java / Maven (backend/)
+# ─────────────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+# Keep mvnw, mvnw.cmd, .mvn/wrapper/maven-wrapper.properties in Git
+!backend/.mvn/
+!backend/.mvn/wrapper/
+!backend/.mvn/wrapper/maven-wrapper.properties
+!backend/mvnw
+!backend/mvnw.cmd
+
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+hs_err_pid*
+replay_pid*
+
+# Spring Boot
+backend/logs/
+backend/*.log
+
+# ─────────────────────────────────────────────
+# Node.js / React / Vite (frontend/)
+# ─────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+frontend/.eslintcache
+frontend/*.local
+
+# npm / yarn / pnpm lock — keep package-lock.json
+# frontend/package-lock.json  # do NOT ignore this
+
+# ─────────────────────────────────────────────
+# Arduino IDE / PlatformIO (firmware/)
+# ─────────────────────────────────────────────
+firmware/.pio/
+firmware/.pioenvs/
+firmware/.piolibdeps/
+firmware/build/
+firmware/.vscode/.browse.c_cpp.db*
+firmware/.vscode/c_cpp_properties.json
+firmware/.vscode/launch.json
+firmware/.vscode/ipch/
+
+# Arduino IDE 2.x build cache
+firmware/sketch.json
+
+# Sensitive firmware config (Wi-Fi password, MQTT creds)
+firmware/include/secrets.h
+firmware/src/secrets.h
+firmware/secrets.h
+firmware/config_local.h
+
+# ─────────────────────────────────────────────
+# IDEs
+# ─────────────────────────────────────────────
+
+# IntelliJ IDEA / JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code — keep shared extensions recommendations
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.springBeans
+*.launch
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+nb-configuration.xml
+
+# ─────────────────────────────────────────────
+# OS-generated files
+# ─────────────────────────────────────────────
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ─────────────────────────────────────────────
+# Logs & temporary files
+# ─────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+*.tmp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# ─────────────────────────────────────────────
+# Docker
+# ─────────────────────────────────────────────
+# Keep docker-compose.yml and Dockerfile in Git
+# Ignore local override files
+docker-compose.override.yml
+
+# ─────────────────────────────────────────────
+# Test & coverage reports
+# ─────────────────────────────────────────────
+backend/target/surefire-reports/
+frontend/coverage/
+frontend/.nyc_output/
+
+# ─────────────────────────────────────────────
+# Flyway (avoid accidentally committing generated SQL)
+# ─────────────────────────────────────────────
+# Keep migration scripts (src/main/resources/db/migration/)
+# Ignore generated output
+backend/target/flyway/
+
+# ─────────────────────────────────────────────
+# Misc
+# ─────────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
