@@ -57,10 +57,10 @@ Tất cả client phải xác thực bằng username/password. Không cho phép 
 
 | Client | Username (ví dụ) | Quyền |
 |---|---|---|
-| Backend Java | `backend-vm001` | Publish: `vending/VM001/commands`; Subscribe: `vending/VM001/events`, `vending/VM001/heartbeat` |
-| ESP32 VM001 | `esp32-vm001` | Subscribe: `vending/VM001/commands`; Publish: `vending/VM001/events`, `vending/VM001/heartbeat` |
+| Backend Java | `backend-vm001` | Publish: `vending/VM001/commands`, `vending/VM001/events/ack`; Subscribe: `vending/VM001/events`, `vending/VM001/heartbeat` |
+| ESP32 VM001 | `esp32-vm001` | Subscribe: `vending/VM001/commands`, `vending/VM001/events/ack`; Publish: `vending/VM001/events`, `vending/VM001/heartbeat` |
 
-> **ACL bắt buộc:** Broker phải cấu hình ACL để ESP32 không thể publish vào topic `commands`, backend không subscribe wildcard không cần thiết, và không client nào truy cập topic của machine khác.
+> **ACL bắt buộc:** Broker phải cấu hình ACL để ESP32 không thể publish vào topic `commands` hay `events/ack`, backend không subscribe wildcard không cần thiết, và không client nào truy cập topic của machine khác.
 
 ### 2.3. Session policy
 
@@ -101,6 +101,7 @@ Sử dụng `{machineId}` để namespace theo từng máy. MVP chỉ có một 
 |---|---|---|
 | `vending/VM001/commands` | Backend → ESP32 | Backend gửi lệnh nhả hàng |
 | `vending/VM001/events` | ESP32 → Backend | ESP32 gửi xác nhận và kết quả |
+| `vending/VM001/events/ack` | Backend → ESP32 | Backend xác nhận đã lưu bền vững event vào DB |
 | `vending/VM001/heartbeat` | ESP32 → Backend | ESP32 báo cáo trạng thái định kỳ |
 
 **Quy tắc:**
@@ -252,14 +253,17 @@ ESP32 publish khi lệnh không vượt qua xác thực.
 
 | Giá trị | Mô tả |
 |---|---|
-| `COMMAND_EXPIRED` | Lệnh đã quá thời gian `expiresAt` |
+| `COMMAND_EXPIRED` | Lệnh đã quá thời gian `expiresAt` tại thời điểm kiểm tra |
+| `COMMAND_EXPIRED_AFTER_REBOOT` | Lệnh `ACCEPTED` trong NVS đã quá hạn (`currentTime >= expiresAt`) sau khi thiết bị reboot và hoàn thành đồng bộ giờ |
 | `DUPLICATE_COMMAND` | `commandId` đã có trong NVS (đã xử lý trước đó) |
 | `INVALID_MACHINE` | `machineId` không khớp với thiết bị |
 | `INVALID_SLOT` | `slotNumber` nằm ngoài phạm vi hợp lệ (chỉ chấp nhận 1, 2, 3) |
 | `INVALID_PAYLOAD` | JSON không hợp lệ hoặc thiếu trường bắt buộc |
 | `UNKNOWN_ACTION` | `action` không được hỗ trợ (chỉ chấp nhận `DISPENSE`) |
 | `BUSY` | Đang thực thi lệnh khác — từ chối để tránh concurrent dispensing |
-| `REBOOT_BEFORE_EXECUTION` | Thiết bị reboot khi lệnh mới ở trạng thái `ACCEPTED` (motor chưa quay) |
+| `REBOOT_BEFORE_EXECUTION` | Thiết bị reboot khi lệnh ở trạng thái `ACCEPTED` nhưng không thể tiếp tục thực thi an toàn |
+| `CLOCK_NOT_SYNCHRONIZED` | Đồng hồ ESP32 chưa đạt tiêu chuẩn Clock Trust qua SNTP (§13.1), từ chối kích hoạt motor |
+| `CLOCK_SYNC_TIMEOUT` | Quá thời gian chờ đồng bộ SNTP sau khởi động/nhận lệnh, không thể xác minh `expiresAt` với đồng hồ tin cậy |
 
 ---
 
@@ -362,12 +366,51 @@ ESP32 publish event này khi startup và phát hiện NVS có lệnh ở trạng
 | `MOTOR_TIMEOUT` | Động cơ không hoàn thành trong `motorRunMs` |
 | `MOTOR_STALL` | Phát hiện động cơ bị kẹt (nếu có cơ chế phát hiện) |
 | `SLOT_BLOCKED` | Cảm biến phát hiện khay bị kẹt (nếu có) |
-| `HARDWARE_ERROR` | Lỗi phần cứng không xác định |
-| `REBOOT_DURING_EXECUTION` | Reboot xảy ra khi motor đang ở trạng thái `EXECUTING` |
+| `HARDWARE_ERROR` | Lỗi phần cứng không xác định hoặc hỏng phân vùng lưu trữ NVS |
+| `REBOOT_DURING_EXECUTION` | Reboot xảy ra khi motor đang ở trạng thái `EXECUTING` (kết quả vật lý bất định) |
+| `COMMAND_EXPIRED_AFTER_REBOOT` | Lệnh `ACCEPTED` trong NVS đã quá hạn sau khi thiết bị reboot và hoàn thành đồng bộ giờ |
+| `CLOCK_SYNC_TIMEOUT_AFTER_REBOOT` | Hết thời gian chờ đồng bộ SNTP sau reboot, không thể xác minh `expiresAt` với đồng hồ tin cậy để chạy motor |
 
 ---
 
-## 9. Payload — Heartbeat
+## 9. Payload — Xác nhận sự kiện phía ứng dụng (Event Acknowledgment)
+
+Backend publish vào `vending/VM001/events/ack` (QoS 1) **CHỈ SAU KHI** đã hoàn tất ghi nhận và lưu trữ bền vững (**commit database transaction thành công**) event kết quả vào cơ sở dữ liệu (`device_events` và cập nhật trạng thái đơn hàng).
+
+```json
+{
+  "ackId": "550e8400-e29b-41d4-a716-446655440040",
+  "eventId": "550e8400-e29b-41d4-a716-446655440032",
+  "commandId": "550e8400-e29b-41d4-a716-446655440020",
+  "machineId": "VM001",
+  "orderId": "550e8400-e29b-41d4-a716-446655440010",
+  "status": "PROCESSED",
+  "timestamp": "2026-10-18T10:32:19.500Z"
+}
+```
+
+**Mô tả trường:**
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `ackId` | string (UUID) | ✅ | ID duy nhất của bản tin xác nhận |
+| `eventId` | string (UUID) | ✅ | ID của event mà Backend đã xử lý và commit DB thành công |
+| `commandId` | string (UUID) | ✅ | ID lệnh gốc liên kết |
+| `machineId` | string | ✅ | Machine ID |
+| `orderId` | string (UUID) | ✅ | Order ID liên kết |
+| `status` | string | ✅ | Phải là `"PROCESSED"` |
+| `timestamp` | string (ISO 8601 UTC) | ✅ | Thời điểm Backend commit dữ liệu vào DB thành công |
+
+> **Quy tắc cốt lõi về Application-level ACK & Phục hồi lỗi:**
+> 1. **Commit-First Policy:** Backend **tuyệt đối không** gửi `EVENT_ACK` khi transaction cơ sở dữ liệu chưa được commit bền vững.
+> 2. **Xử lý sập nguồn sau commit (Crash after commit):** Nếu Backend gặp sự cố sập nguồn/crash ngay sau khi commit DB thành công nhưng trước khi kịp publish `EVENT_ACK`:
+>    - Sau khi Backend khởi động lại hoặc ESP32 republish lại event từ NVS Outbox, Backend sẽ nhận được event trùng lặp.
+>    - Backend tìm thấy bản ghi event đã tồn tại trong `device_events` ➔ **không áp dụng lại hiệu ứng nghiệp vụ** (không đổi trạng thái đơn hàng lần 2, không trừ tồn kho lần 2), nhưng **BẮT BUỘC publish lại bản tin `EVENT_ACK` tương ứng** để ESP32 có thể giải phóng bộ nhớ.
+> 3. **Xóa đúng Event ID trên ESP32:** ESP32 **chỉ được phép xóa đúng bản ghi có `eventId` khớp chính xác** (`ack.eventId == nvs.outbox_event.eventId`) khỏi NVS Outbox. Nếu `eventId` không khớp, ESP32 giữ nguyên Outbox.
+
+---
+
+## 10. Payload — Heartbeat
 
 ESP32 publish định kỳ (khuyến nghị mỗi 30–60 giây — TBD) vào `vending/VM001/heartbeat`.
 
@@ -403,32 +446,33 @@ ESP32 publish định kỳ (khuyến nghị mỗi 30–60 giây — TBD) vào `v
 
 ---
 
-## 10. QoS và Retained Message
+## 11. QoS và Retained Message
 
 | Topic | QoS | Retained | Lý do |
 |---|---|---|---|
 | `vending/VM001/commands` | QoS 1 | **Không (false)** | Không lưu lại lệnh cũ; xử lý stale message qua `expiresAt` và NVS |
-| `vending/VM001/events` | QoS 1 | Không | Events tức thời; idempotency qua Backend kiểm tra DB |
+| `vending/VM001/events` | QoS 1 | Không | Events tức thời; lưu trữ bền vững qua NVS Outbox phía ESP32 |
+| `vending/VM001/events/ack` | QoS 1 | Không | Xác nhận ứng dụng từ Backend để ESP32 xóa outbox |
 | `vending/VM001/heartbeat` | QoS 0 | Không | Mất heartbeat đơn lẻ là chấp nhận được; QoS 0 giảm tải broker |
 
-**Tại sao QoS 1 cho commands và events?**
+**Nguyên tắc QoS 1 và Idempotency ở tầng ứng dụng:**
 
 QoS 1 đảm bảo message đến ít nhất một lần. Idempotency được xử lý ở tầng ứng dụng:
 
 - **Phía ESP32:** Kiểm tra `commandId` trong NVS — đã xử lý thì reject với `DUPLICATE_COMMAND`.
-- **Phía Backend:** Kiểm tra `commandId` trong DB trước khi xử lý event; xử lý event trùng lặp không thay đổi trạng thái.
+- **Phía Backend:** Kiểm tra `commandId`/`eventId` trong DB trước khi xử lý; nếu trùng thì không thay đổi trạng thái và gửi lại `EVENT_ACK`.
 
 ---
 
-## 11. Xử lý lệnh trùng lặp, NVS Persistence và Durable Event Outbox
+## 12. Xử lý lệnh trùng lặp, NVS Persistence và Durable Event Outbox
 
-### 11.1. ESP32 — NVS Flash storage & Durable Event Outbox
+### 12.1. ESP32 — NVS Flash Storage, Trạng thái bền vững và Tính toàn vẹn Flash
 
-Khi cấu hình ESP32 với `cleanSession=true`, broker MQTT sẽ **không** lưu trữ trạng thái phiên làm việc hay các gói tin QoS 1 đang gửi dở qua các lần reboot. Do đó, **chỉ riêng MQTT QoS 1 không thể bảo đảm gửi event bền vững nếu ESP32 bị mất điện hoặc crash**.
+Khi cấu hình ESP32 với `cleanSession=true`, broker MQTT sẽ **không** lưu trữ trạng thái phiên làm việc hay các gói tin QoS 1 đang gửi dở qua các lần reboot. Do đó, **chỉ riêng MQTT QoS 1 hoặc gói tin PUBACK của Broker không thể bảo đảm Backend đã nhận và xử lý event**.
 
-Để bảo đảm không bao giờ mất thông tin kết quả nhả hàng (đặc biệt là trạng thái `UNCERTAIN`), ESP32 phải triển khai cơ chế **NVS Durable Event Outbox**.
+Để đảm bảo không bao giờ mất thông tin kết quả nhả hàng (đặc biệt là kết quả `UNCERTAIN`), ESP32 phải triển khai cơ chế **NVS Durable Event Outbox** với quy tắc xác nhận tầng ứng dụng.
 
-**Dữ liệu lưu trong NVS:**
+#### 12.1.1. Cấu trúc dữ liệu lưu trong NVS Flash
 
 ```
 key: "cmd_active"     → commandId của lệnh đang active (UUID v4 hoặc rỗng)
@@ -438,83 +482,137 @@ key: "cmd_started"    → timestamp khi bắt đầu chạy motor
 key: "cmd_orderid"    → orderId liên kết
 key: "cmd_expires"    → expiresAt timestamp (epoch ms)
 
-key: "outbox_pending" → boolean (true nếu có event chưa nhận được PUBACK từ broker)
-key: "outbox_event"   → JSON string chứa toàn bộ payload của event kết quả gần nhất
+key: "outbox_pending" → boolean (true nếu có event chưa nhận được EVENT_ACK từ Backend)
+key: "outbox_event"   → JSON string chứa toàn bộ payload của event kết quả gần nhất (chứa eventId)
 ```
+
+**Phân biệt ranh giới thực thi vật lý qua `cmd_state` bền vững:**
+- `ACCEPTED`: Lệnh đã được nhận, cú pháp và chữ ký hợp lệ, đã ghi nhận vào NVS, nhưng **thực thi vật lý CHẮC CHẮN CHƯA BẮT ĐẦU** (chân GPIO điều khiển motor luôn ở mức LOW/OFF).
+- `EXECUTING`: Đã ghi nhận chuyển trạng thái vào NVS và chân GPIO đã hoặc đang được kích hoạt cấp điện cho motor. **Thực thi vật lý CÓ THỂ ĐÃ BẮT ĐẦU**.
+- `COMPLETED`: Chu kỳ quay motor đã kết thúc trọn vẹn bình thường.
+- `FAILED`: Lệnh bị từ chối hoặc thất bại do lỗi xác định.
+- `UNCERTAIN`: Đang trong chu kỳ `EXECUTING` thì gặp sự cố sập nguồn/reboot; kết quả cơ học là bất định.
 
 **Sliding window của commandId đã hoàn thành:** Lưu 20 `commandId` gần nhất đã kết thúc (`COMPLETED`, `FAILED`, `UNCERTAIN`) để loại trừ lệnh gửi lại (duplicate command).
 
+#### 12.1.2. Tính toàn vẹn NVS và Giới hạn thực tế khi mất nguồn (Torn Writes & Power Loss Reality)
+
+Thiết kế hệ thống không ngộ nhận hay tuyên bố Flash có tính bền vững tuyệt đối vượt quá khả năng vật lý của vi điều khiển:
+- **Thực tế phần cứng và giới hạn của ESP-IDF NVS:**
+  - ESP-IDF NVS lưu trữ dữ liệu dạng key-value trên các Flash sector/page 4KB, gắn mã kiểm tra CRC32 cho từng entry riêng lẻ (32 bytes).
+  - NVS **không phải là hệ thống cơ sở dữ liệu có tính giao dịch ACID toàn diện** trên nhiều khóa (multi-key atomicity). Mỗi key được ghi và cập nhật độc lập.
+  - Nếu mất điện xảy ra đúng vào chu kỳ ghi Flash, một "torn write" (ghi dở dang, rách bản ghi) có thể xảy ra trên entry đó. Nghiêm trọng hơn, nếu sụt áp (brownout) xảy ra trong quá trình xóa trang hoặc dọn dẹp bộ nhớ (page compaction/garbage collection), tiêu đề trang (page header) hoặc bảng trạng thái entry có thể bị lỗi, dẫn đến lỗi phân vùng (`ESP_ERR_NVS_CORRUPT_KEY_SYSTEM_DATA` hoặc `ESP_ERR_NVS_NO_FREE_PAGES`). NVS **không thể tự động phục hồi từ mọi hỏng hóc vật lý của chip Flash**.
+- **Quy tắc ghi tuần tự ưu tiên an toàn (State-First Sequencing):**
+  Firmware bắt buộc phải commit trạng thái mới vào NVS *trước* khi thực hiện hành động vật lý tiếp theo. Cụ thể: chuyển `cmd_state = EXECUTING` vào NVS trước khi kéo chân GPIO lên HIGH. Nhờ đó, nếu mất điện rơi đúng tích tắc này, sau khi reboot thiết bị sẽ nhận diện ở mức "có thể đã chạy" (`UNCERTAIN`), tuyệt đối không bao giờ nhận diện nhầm là "chưa chạy" để kích hoạt motor lần hai.
+- **Cơ chế xử lý hỏng hóc và Nguyên tắc Fail-Safe:**
+  1. Thư viện NVS tự động xác thực CRC32 khi đọc dữ liệu. Entry bị torn write sẽ bị NVS coi là không hợp lệ và trả về mã lỗi (ví dụ `ESP_ERR_NVS_NOT_FOUND` hoặc lỗi phân vùng).
+  2. **Nguyên tắc an toàn tối cao khi NVS lỗi:** Trong mọi tình huống phát hiện NVS bị hỏng phân vùng, lỗi CRC, lỗi đọc Flash hoặc không thể xác minh chắc chắn trạng thái lệnh:
+     - Firmware **bắt buộc khóa cứng toàn bộ chân GPIO motor ở mức LOW (OFF)**.
+     - **Tuyệt đối không kích hoạt motor** khi dữ liệu trạng thái không nguyên vẹn hoặc không đáng tin cậy.
+     - Chuyển thiết bị sang trạng thái lỗi đối soát, phát mã lỗi chẩn đoán phần cứng (`HARDWARE_ERROR` / `STORAGE_CORRUPTED`) trong heartbeat hoặc bản tin alert để nhân viên kỹ thuật kiểm tra và xử lý tại chỗ.
+
 ---
 
-### 11.2. Quy trình NVS Event Outbox và Startup sau Reboot
+### 12.2. Điều kiện xóa NVS Outbox và Quy trình Startup / Reconnect sau Reboot
+
+> **ĐIỀU KIỆN XÓA OUTBOX CHÍNH XÁC:**
+> - ESP32 **CHỈ ĐƯỢC XÓA** event khỏi NVS Outbox (`outbox_pending = false`, xóa `outbox_event`) khi và chỉ khi **nhận được bản tin `EVENT_ACK` từ Backend trên topic `vending/{machineId}/events/ack` có `eventId` khớp chính xác với `eventId` đang lưu trong Outbox (`ack.eventId == nvs.outbox_event.eventId`)**.
+> - Nếu `ack.eventId` nhận được không khớp với `eventId` trong Outbox (ví dụ ACK của một event cũ đã xong), ESP32 **bỏ qua và giữ nguyên Outbox**.
+> - Gói tin MQTT `PUBACK` từ Broker **chỉ là biên nhận tầng mạng** và **TUYỆT ĐỐI KHÔNG** được dùng làm căn cứ để xóa Outbox.
+> - Chừng nào chưa nhận được `EVENT_ACK` khớp, event **bắt buộc phải được giữ nguyên vẹn trong Flash NVS qua mọi lần reboot** và được republish sau mỗi lần kết nối lại MQTT (hoặc theo timer retry).
+
+**Sơ đồ quy trình Startup / Reconnect:**
 
 ```
 Boot / Reconnect
   │
+  ├── 0. Khởi tạo GPIO an toàn: Tất cả GPIO điều khiển motor lập tức gán LOW (OFF).
+  │
   ├── 1. Kiểm tra NVS Outbox: outbox_pending == true?
-  │   ├── CÓ: Tồn tại event chưa nhận được PUBACK từ broker (do mất mạng hoặc crash trước đó)
-  │   │   → Kết nối MQTT broker
+  │   ├── CÓ: Tồn tại event chưa nhận được EVENT_ACK từ Backend
+  │   │   → Kết nối MQTT broker, subscribe vending/{machineId}/events/ack
   │   │   → Republish chính xác payload từ "outbox_event" (giữ nguyên eventId và commandId gốc) lên topic vending/{machineId}/events (QoS 1)
-  │   │   → Khi nhận được MQTT PUBACK từ broker:
-  │   │   │   → Cập nhật NVS: outbox_pending = false
+  │   │   → Khi nhận được EVENT_ACK từ Backend có matching eventId:
+  │   │   │   → Cập nhật NVS: outbox_pending = false, xóa outbox_event
   │   └── KHÔNG: Không có event tồn đọng
   │
   ├── 2. Đọc NVS "cmd_active" & "cmd_state":
   │   │
-  │   ├── cmd_state == ACCEPTED?
-  │   │   → Motor chưa từng được kích hoạt trước khi reboot (GPIO luôn LOW)
-  │   │   → TUYỆT ĐỐI KHÔNG TỰ KHỞI ĐỘNG MOTOR SAU KHI REBOOT
-  │   │   → ESP32 publish COMMAND_REJECTED với rejectionReason="REBOOT_BEFORE_EXECUTION"
-  │   │   → Xóa cmd_active, đưa cmd_state về IDLE
-  │   │   → Backend nhận COMMAND_REJECTED hoặc timeout T1 ➔ chuyển đơn hàng sang NEEDS_RECONCILIATION
-  │   │
   │   ├── cmd_state == EXECUTING?
   │   │   → ESP32 bị sập nguồn / reboot trong lúc motor đang quay hoặc vừa quay xong chưa kịp lưu COMPLETED
-  │   │   → Kết quả vật lý là hoàn toàn BẤT ĐỊNH (UNCERTAIN)
-  │   │   → Cập nhật NVS: cmd_state = UNCERTAIN
+  │   │   → Thực thi vật lý CÓ THỂ ĐÃ BẮT ĐẦU: Kết quả vật lý là hoàn toàn BẤT ĐỊNH (UNCERTAIN)
+  │   │   → Chuyển sang trạng thái đối soát: Cập nhật NVS: cmd_state = UNCERTAIN
   │   │   → Tạo payload DISPENSE_RESULT với result="UNCERTAIN", failureCode="REBOOT_DURING_EXECUTION"
   │   │   → Lưu payload vào "outbox_event", set "outbox_pending = true"
-  │   │   → Publish event lên MQTT (QoS 1) và chờ PUBACK để xóa outbox
-  │   │   → TUYỆT ĐỐI KHÔNG KÍCH HOẠT MOTOR LẦN THỨ HAI
+  │   │   → Publish event lên MQTT (QoS 1) và chờ EVENT_ACK từ Backend để xóa outbox
+  │   │   → TUYỆT ĐỐI KHÔNG BAO GIỜ TỰ ĐỘNG KÍCH HOẠT LẠI MOTOR
+  │   │
+  │   ├── cmd_state == ACCEPTED?
+  │   │   → Lệnh đã được lưu bền vững, nhưng thực thi vật lý CHẮC CHẮN CHƯA BẮT ĐẦU (GPIO luôn LOW)
+  │   │   → TUYỆT ĐỐI KHÔNG TỰ ĐỘNG HỦY BỎ LỆNH CHỈ VÌ CHƯA CÓ ĐỒNG HỒ NGAY LÚC BOOT
+  │   │   → TUYỆT ĐỐI KHÔNG KÍCH HOẠT MOTOR KHI CHƯA XÁC MINH ĐƯỢC EXPIRESAT QUA ĐỒNG HỒ TIN CẬY
+  │   │   → ESP32 giữ motor ở mức LOW (OFF), kết nối Wi-Fi và tiến hành đồng bộ SNTP (chờ tối đa 10–15s)
+  │   │   │
+  │   │   ├── Đồng bộ SNTP thành công và đạt tiêu chuẩn Clock Trust (§13.1):
+  │   │   │   → Kiểm tra lại trạng thái NVS: cmd_state vẫn là ACCEPTED
+  │   │   │   → So sánh thời gian thực tin cậy với cmd_expires (expiresAt):
+  │   │   │   │
+  │   │   │   ├── currentTime < cmd_expires (Lệnh VẪN CÒN HẠN & an toàn để thực thi):
+  │   │   │   │   → Cập nhật NVS: cmd_state = EXECUTING, ghi cmd_started
+  │   │   │   │   → KÍCH HOẠT MOTOR an toàn theo đúng thông số lệnh gốc
+  │   │   │   │   → Hoàn thành chu kỳ: NVS cmd_state = COMPLETED, lưu DISPENSE_RESULT(SUCCESS) vào Outbox, publish MQTT
+  │   │   │   │
+  │   │   │   └── currentTime >= cmd_expires (Lệnh ĐÃ HẾT HẠN trong quá trình sập nguồn/boot):
+  │   │   │       → Cập nhật NVS: cmd_state = FAILED
+  │   │   │       → Tạo DISPENSE_RESULT(FAILURE, failureCode="COMMAND_EXPIRED_AFTER_REBOOT") hoặc COMMAND_REJECTED
+  │   │   │       → Lưu Outbox, publish MQTT, dọn cmd_active
+  │   │   │       → TUYỆT ĐỐI KHÔNG KÍCH HOẠT MOTOR
+  │   │   │
+  │   │   └── Hết thời gian chờ mà KHÔNG đạt Clock Trust (mạng rớt hoặc NTP lỗi):
+  │   │       → Không thể xác minh hạn lệnh bằng đồng hồ tin cậy ➔ TUYỆT ĐỐI KHÔNG CHẠY MOTOR
+  │   │       → Cập nhật NVS: cmd_state = FAILED
+  │   │       → Tạo DISPENSE_RESULT(FAILURE, failureCode="CLOCK_SYNC_TIMEOUT_AFTER_REBOOT"), lưu Outbox
+  │   │       → Dọn cmd_active, đưa máy về trạng thái IDLE
   │   │
   │   ├── cmd_state == COMPLETED / FAILED / UNCERTAIN?
   │   │   → Quá trình nhả hàng đã kết thúc trước đó. Nếu outbox_pending đã false thì không cần làm gì thêm.
   │   │
   │   └── NVS rỗng / cmd_state == IDLE?
-  │       → Khởi động bình thường, tất cả chân điều khiển motor ở mức LOW (OFF).
+  │       → Khởi động bình thường, tất cả chân điều khiển motor ở mức LOW (OFF), sẵn sàng nhận lệnh mới.
 ```
 
 ---
 
-### 11.3. Phân tích các tình huống mất điện và giới hạn của MQTT PUBACK
+### 12.3. Phân tích các tình huống mất điện và xử lý khi mất Acknowledgment
 
-#### 11.3.1. Phân tích 4 tình huống mất điện điển hình
+#### 12.3.1. Phân tích 4 tình huống mất điện điển hình
 
 | Tình huống mất điện | Trạng thái tại thời điểm mất điện | Hành vi của ESP32 sau khi có điện lại | Hành vi của Backend |
 |---|---|---|---|
 | **1. Trước khi lưu NVS** | Gói tin lệnh vừa tới bộ đệm RAM của Wi-Fi, chưa kịp ghi Flash NVS. | NVS hoàn toàn rỗng. ESP32 khởi động IDLE bình thường, motor không quay. | Backend chờ hết timeout T1 (không nhận được `COMMAND_ACCEPTED`) ➔ chuyển đơn hàng sang `NEEDS_RECONCILIATION`. Tuyệt đối an toàn. |
-| **2. Sau khi lưu NVS `ACCEPTED` nhưng trước khi chạy motor** | NVS đã ghi `cmd_state = ACCEPTED`, chân GPIO vẫn ở mức LOW (chưa cấp điện motor). | ESP32 đọc NVS thấy `ACCEPTED`. Vì motor chưa chạy, ESP32 **tuyệt đối không bật motor**. ESP32 gửi `COMMAND_REJECTED` (`reason: REBOOT_BEFORE_EXECUTION`), dọn NVS về IDLE. | Backend nhận `COMMAND_REJECTED` (hoặc timeout T1) ➔ chuyển order sang `NEEDS_RECONCILIATION`. Không có nguy cơ giao hàng trùng. |
-| **3. Khi motor đang quay (`EXECUTING`)** | Motor đang nhận điện và quay dở hành trình thì mất nguồn. Không rõ sản phẩm đã rơi khỏi lò xo chưa. | ESP32 khởi động lại, đọc NVS thấy `cmd_state = EXECUTING`. Chuyển ngay sang `UNCERTAIN`, lưu `outbox_event`, set `outbox_pending = true`. Publish event `UNCERTAIN` với `failureCode = REBOOT_DURING_EXECUTION`. | Backend nhận `UNCERTAIN` ➔ lập tức chuyển order sang `NEEDS_RECONCILIATION`, thông báo khách hàng và chờ operator kiểm tra cơ học. |
-| **4. Sau khi quay xong motor nhưng trước khi nhận PUBACK** | Motor đã hoàn thành chu kỳ, NVS đã lưu `outbox_event` với kết quả `SUCCESS`, `outbox_pending = true`, nhưng mạng rớt hoặc reboot trước khi nhận ACK. | ESP32 khởi động lại, kiểm tra thấy `outbox_pending == true`. ESP32 kết nối broker và republish chính xác event `SUCCESS` (giữ nguyên `eventId` và `commandId`). | Backend nhận event `SUCCESS` ➔ chuyển order sang `COMPLETED`, trừ tồn kho. Nếu Backend đã nhận trước đó thì bỏ qua duplicate. |
+| **2. Sau khi lưu NVS `ACCEPTED` nhưng trước khi chạy motor** | NVS đã ghi `cmd_state = ACCEPTED`, chân GPIO vẫn ở mức LOW (chưa cấp điện motor). | ESP32 đọc NVS thấy `ACCEPTED`. Không tự ý hủy lệnh ngay. Đợi SNTP đạt Clock Trust. Nếu lệnh còn hạn (`now < expiresAt`), chuyển sang `EXECUTING` và quay motor an toàn. Nếu hết hạn hoặc SNTP timeout: báo `COMMAND_EXPIRED_AFTER_REBOOT` hoặc `CLOCK_SYNC_TIMEOUT`, motor không quay. | Nếu ESP32 chạy motor thành công ➔ nhận `SUCCESS` ➔ order `COMPLETED`. Nếu hết hạn/lỗi clock ➔ nhận failure/timeout ➔ order `NEEDS_RECONCILIATION`. Không có nguy cơ quay motor mù. |
+| **3. Khi motor đang quay (`EXECUTING`)** | Motor đang nhận điện và quay dở hành trình thì mất nguồn. Không rõ sản phẩm đã rơi khỏi lò xo chưa. | ESP32 khởi động lại, đọc NVS thấy `cmd_state = EXECUTING`. Chuyển ngay sang `UNCERTAIN`, lưu `outbox_event`, set `outbox_pending = true`. Publish event `UNCERTAIN` với `failureCode = REBOOT_DURING_EXECUTION`. Tuyệt đối không bật lại motor. | Backend nhận `UNCERTAIN` ➔ lập tức chuyển order sang `NEEDS_RECONCILIATION`, commit DB và gửi lại `EVENT_ACK`. Chờ operator kiểm tra cơ học tại máy. |
+| **4. Sau khi quay xong motor nhưng trước khi nhận EVENT_ACK** | Motor đã hoàn thành chu kỳ, NVS đã lưu `outbox_event` với kết quả `SUCCESS`, `outbox_pending = true`, nhưng mạng rớt hoặc reboot trước khi nhận `EVENT_ACK`. | ESP32 khởi động lại, kiểm tra thấy `outbox_pending == true`. ESP32 kết nối broker và republish chính xác event `SUCCESS` (giữ nguyên `eventId` và `commandId`). | Backend nhận event `SUCCESS` ➔ nếu chưa xử lý thì commit DB; nếu đã commit rồi thì bỏ qua chuyển trạng thái, nhưng **LUÔN GỬI LẠI `EVENT_ACK`**. |
 
-#### 11.3.2. Sập nguồn hoặc reboot liên tiếp nhiều lần (Repeated Reboots)
+#### 12.3.2. Hành vi khi bản tin EVENT_ACK bị thất lạc trên mạng hoặc Backend Crash sau Commit
+
+1. **Backend Crash sau Commit:** Backend nhận event, ghi vào bảng `device_events` và commit transaction cập nhật đơn hàng thành công, nhưng tiến trình Backend bị crash ngay trước khi phát bản tin `EVENT_ACK` ra broker.
+2. ESP32 không nhận được `EVENT_ACK` nên `outbox_pending` vẫn là `true` trong NVS Flash.
+3. Sau khi kết nối lại hoặc hết retry timer (15 giây), ESP32 republish chính xác bản tin event đó (giữ nguyên `eventId` và `commandId`) lên topic `vending/{machineId}/events`.
+4. **Xử lý Idempotent tại Backend:**
+   - Backend truy vấn cơ sở dữ liệu và phát hiện `eventId` (hoặc `commandId`) đã tồn tại trong `device_events`.
+   - Backend **bỏ qua hoàn toàn việc áp dụng hiệu ứng nghiệp vụ** (không thay đổi trạng thái đơn hàng lần 2, không trừ kho lần 2, không gọi webhook ra ngoài lần 2).
+   - **BẮT BUỘC:** Backend **phải gửi lại bản tin `EVENT_ACK`** (chứa matching `eventId`) về topic `vending/{machineId}/events/ack`.
+5. ESP32 nhận được `EVENT_ACK`, kiểm tra `ack.eventId == nvs.outbox_event.eventId`, và xóa event khỏi NVS Outbox.
+
+#### 12.3.3. Sập nguồn hoặc reboot liên tiếp nhiều lần (Repeated Reboots)
 
 - Nếu ESP32 bị mất điện liên tục trong khi đang khởi động hoặc đang cố gửi event `UNCERTAIN`, dữ liệu trong Flash NVS (`outbox_pending = true`, `outbox_event`) không bị mất đi nhờ tính bền vững của bộ nhớ Flash.
-- Trong mọi lần boot, firmware luôn kiểm tra NVS Outbox trước tiên. Event chưa gửi thành công sẽ tiếp tục được giữ và republish cho đến khi nhận được xác nhận `PUBACK` từ broker.
-
-#### 11.3.3. Giới hạn bản chất của MQTT PUBACK
-
-> **Cảnh báo kiến trúc quan trọng:**
-> - Gói tin `PUBACK` mà ESP32 nhận được **chỉ là biên nhận tầng mạng giữa ESP32 và MQTT Broker**, xác nhận broker đã lưu gói tin QoS 1 vào buffer.
-> - **`PUBACK` không chứng minh rằng Backend Java đã nhận được message hay đã commit dữ liệu thành công vào database.**
-> - Tính toàn vẹn đầu-cuối (End-to-End Reliability) được bảo đảm nhờ sự phối hợp của 3 yếu tố:
->   1. Backend duy trì **Persistent Session (`cleanSession = false`)** với broker: Khi Backend gặp sự cố hoặc khởi động lại, Broker sẽ lưu trữ các message QoS 1 từ ESP32 và gửi lại ngay khi Backend kết nối lại.
->   2. Backend xử lý event trong transaction cơ sở dữ liệu (`device_events` + cập nhật trạng thái đơn hàng).
->   3. Backend xử lý idempotent: Dù Broker hay ESP32 có redeliver event nhiều lần, Backend chỉ cập nhật trạng thái ở lần đầu tiên.
+- Trong mọi lần boot, firmware luôn kiểm tra NVS Outbox trước tiên. Event chưa gửi thành công sẽ tiếp tục được giữ và republish cho đến khi nhận được xác nhận `EVENT_ACK` từ Backend.
 
 ---
 
-### 11.4. Backend — Idempotency và Tiếp nhận Event trùng lặp
+### 12.4. Backend — Idempotency và Tiếp nhận Event trùng lặp
 
 Do cơ chế QoS 1 redelivery và cơ chế Outbox tự gửi lại của ESP32, Backend có thể nhận cùng một event nhiều lần. Backend phải đảm bảo:
 
@@ -522,13 +620,40 @@ Do cơ chế QoS 1 redelivery và cơ chế Outbox tự gửi lại của ESP32,
 2. **Idempotent State Transition:**
    - Nếu đơn hàng đã chuyển sang trạng thái tương ứng (`COMPLETED`, `DISPENSE_FAILED`, hoặc `NEEDS_RECONCILIATION`), việc nhận lại event trùng lặp **không được kích hoạt thay đổi trạng thái lần thứ hai**, không kích hoạt trừ tồn kho lần hai, và không gửi thông báo trùng lặp.
    - Ghi nhận mọi event nhận được vào `device_events` để phục vụ audit/truy vết.
+   - **Luôn gửi lại `EVENT_ACK`** tương ứng với `eventId` đã nhận.
 3. **An toàn vật lý:** Vì motor vật lý trên ESP32 chỉ kích hoạt tối đa một lần cho mỗi `commandId`, việc nhận lại event chỉ là đồng bộ trạng thái ở tầng phần mềm, hoàn toàn không có rủi ro nhả thêm hàng.
 
 ---
 
-## 12. Xử lý Timeout, Hết hạn lệnh và Retransmission
+## 13. Nguồn thời gian của ESP32, Hết hạn lệnh và Xử lý Timeout
 
-### 12.1. Phân biệt Message Retransmission vs. Physical Dispensing Retry
+### 13.1. Nguồn thời gian của ESP32, Tiêu chuẩn Đồng hồ Tin cậy (Clock Trust) và Quy tắc an toàn
+
+1. **Nguồn thời gian phần cứng:** ESP32 không có pin nuôi RTC độc lập. Khi mất nguồn hoàn toàn, đồng hồ phần cứng nội bộ bị reset về mốc epoch 0 (1970-01-01T00:00:00Z). Thiết bị lấy thời gian thực UTC thông qua giao thức SNTP (`pool.ntp.org` hoặc NTP server chỉ định) ngay sau khi có kết nối Wi-Fi.
+2. **Tiêu chuẩn công nhận Đồng hồ Tin cậy ở tầng ứng dụng (Application-level Clock Trust):**
+   - **Giới hạn API của ESP-IDF lwIP SNTP:**
+     > **Lưu ý kiến trúc quan trọng:** Stack lwIP SNTP trong ESP-IDF xử lý và kiểm tra tính hợp lệ của gói tin NTP ở tầng socket nội bộ (loại bỏ gói tin lỗi cú pháp, kiểm tra phản hồi từ máy chủ). Tuy nhiên, **ESP-IDF SNTP API tiêu chuẩn (`esp_sntp.h`) KHÔNG export các trường Stratum hay Leap Indicator ra cho tầng ứng dụng**. Do đó, firmware ứng dụng không thể và không giả định có thể truy cập trực tiếp các trường này thông qua API chuẩn của ESP-IDF mà không sửa đổi mã nguồn thư viện hệ thống.
+   - **Các kiểm tra Clock Trust khả thi và có thể triển khai:**
+     Đồng hồ ESP32 **CHỈ ĐƯỢC COI LÀ TIN CẬY** (`clock_trusted == true`) khi thỏa mãn **ĐỒNG THỜI** các điều kiện sau:
+     1. **Trạng thái SNTP Engine:** Hàm API `sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED` (hoặc notification callback được kích hoạt qua `esp_sntp_set_time_sync_notification_cb`), xác nhận stack SNTP đã nhận gói phản hồi hợp lệ từ máy chủ NTP và đã hiệu chỉnh đồng hồ hệ thống.
+     2. **Kiểm tra tính hợp lý tối thiểu (Build-time Sanity Check):** Thời gian UTC hệ thống sau đồng bộ phải thỏa mãn `currentTime >= BUILD_TIMESTAMP` (thời điểm biên dịch firmware, bảo đảm không lùi về 1970 hay các mốc thời gian quá khứ trước khi phần mềm được tạo ra) và không vượt quá một mốc tương lai phi lý (ví dụ: `BUILD_TIMESTAMP + 10 năm`).
+     3. **Ý nghĩa của `BUILD_TIMESTAMP`:**
+        > `BUILD_TIMESTAMP` **chỉ là một phép kiểm tra hợp lý tối thiểu (sanity check)** để phát hiện đồng hồ chưa đồng bộ (vẫn ở epoch 0 hoặc các năm trước khi thiết bị ra đời) hoặc thanh ghi RTC bị rác sau brownout. Nó **KHÔNG PHẢI là bằng chứng khẳng định đồng hồ chính xác tuyệt đối**.
+     4. **QUY TẮC BẮT BUỘC VỀ NĂM HỆ THỐNG:**
+        > **Chỉ kiểm tra năm (`year >= 2024`) KHÔNG ĐƯỢC COI là bằng chứng hợp lệ của việc đồng hồ đã đồng bộ!**
+        > Sau sự cố sụt áp (brownout), reset bộ nhớ hoặc thanh ghi RTC RAM chưa khởi tạo, các ô nhớ có thể chứa giá trị rác ngẫu nhiên vẫn thỏa mãn điều kiện `year >= 2024`. Do đó, kiểm tra năm đơn thuần là không đủ tin cậy và không thể thay thế cho việc xác thực trạng thái hoàn tất của SNTP engine.
+3. **Xử lý khi đồng hồ chưa tin cậy hoặc không hợp lệ (`clock_trusted == false`):**
+   - **NGUYÊN TẮC AN TOÀN TỐI CAO:** ESP32 **TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP KÍCH HOẠT BẤT KỲ MOTOR NÀO** khi thời hạn lệnh (`expiresAt`) không thể xác minh bằng một đồng hồ tin cậy.
+   - Khi nhận lệnh mới qua MQTT hoặc khi kiểm tra lệnh `ACCEPTED` tồn đọng sau boot:
+     - ESP32 giữ nguyên motor ở mức LOW (OFF).
+     - Cho phép một khoảng thời gian chờ có giới hạn (grace period: 5–10 giây cho lệnh mới, 10–15 giây sau reboot) để SNTP hoàn tất đồng bộ.
+     - Nếu đạt tiêu chuẩn Clock Trust trong thời gian chờ: tiến hành kiểm tra `expiresAt` và xử lý tiếp.
+     - Nếu hết thời gian chờ mà đồng hồ vẫn chưa tin cậy: từ chối lệnh với mã lỗi `CLOCK_NOT_SYNCHRONIZED` hoặc `CLOCK_SYNC_TIMEOUT`. Motor tuyệt đối không được cấp điện.
+   - **Chống tự động retry vật lý:** Lệnh bị từ chối do lỗi đồng hồ tuyệt đối không được tự ý phát lại dưới dạng lệnh vật lý mới.
+
+---
+
+### 13.2. Phân biệt Message Retransmission vs. Physical Dispensing Retry
 
 Đây là nguyên tắc an toàn quan trọng nhất của hệ thống:
 
@@ -539,20 +664,20 @@ Do cơ chế QoS 1 redelivery và cơ chế Outbox tự gửi lại của ESP32,
 
 ---
 
-### 12.2. Kiểm tra thời hạn lệnh (`expiresAt`) đa tầng trên ESP32
+### 13.3. Kiểm tra thời hạn lệnh (`expiresAt`) đa tầng trên ESP32
 
 Để ngăn chặn tuyệt đối việc motor kích hoạt trễ khi khách hàng đã rời khỏi máy:
 
-1. **Kiểm tra tầng 1 (Ngay khi nhận lệnh từ MQTT):**
-   - ESP32 so sánh `currentTime >= expiresAt`.
-   - Nếu đã hết hạn: từ chối ngay lập tức, publish `COMMAND_REJECTED` với `reason: "COMMAND_EXPIRED"`, không ghi nhận vào trạng thái active của NVS.
+1. **Kiểm tra tầng 1 (Ngay khi nhận lệnh từ MQTT hoặc sau khi khôi phục từ boot):**
+   - Kiểm tra tiêu chuẩn `clock_trusted == true`. Nếu chưa tin cậy: chờ tối đa grace period; nếu vẫn thất bại ➔ từ chối với `CLOCK_NOT_SYNCHRONIZED` hoặc `CLOCK_SYNC_TIMEOUT`.
+   - So sánh `currentTime >= expiresAt`. Nếu đã hết hạn: từ chối ngay lập tức, publish `COMMAND_REJECTED` với `reason: "COMMAND_EXPIRED"`, không ghi nhận vào trạng thái active của NVS.
 2. **Kiểm tra tầng 2 (Ngay trước khi kích hoạt chân GPIO điều khiển motor):**
-   - Sau khi hoàn thành các bước ghi NVS, ngay trước khi cấp xung điện cho motor driver, ESP32 kiểm tra lại `currentTime >= expiresAt` một lần nữa.
+   - Sau khi hoàn thành các bước ghi NVS, ngay trước khi cấp xung điện cho motor driver, ESP32 kiểm tra lại `clock_trusted == true` và `currentTime >= expiresAt` một lần nữa.
    - Nếu đã quá hạn trong quá trình chuẩn bị: hủy kích hoạt motor, cập nhật NVS `cmd_state = FAILED`, publish `DISPENSE_RESULT` với `failureCode = "COMMAND_EXPIRED_BEFORE_EXECUTION"`.
 
 ---
 
-### 12.3. Quy trình Timeout trên Backend và nguyên tắc không diễn giải sai
+### 13.4. Quy trình Timeout trên Backend và nguyên tắc không diễn giải sai
 
 ```
 T=0:    Backend publish command lên MQTT
@@ -561,9 +686,9 @@ T=T1:   Chờ COMMAND_ACCEPTED (T1 = 30 giây đề xuất — TBD)
   ├── Nhận ACCEPTED → tiếp tục chờ DISPENSE_RESULT
   │   T=T1+T2: Chờ DISPENSE_RESULT (T2 = 60 giây đề xuất — TBD)
   │     │
-  │     ├── Nhận SUCCESS → order → COMPLETED (trừ tồn kho)
-  │     ├── Nhận FAILURE → order → DISPENSE_FAILED (giải phóng giữ chỗ tồn kho)
-  │     ├── Nhận UNCERTAIN → order → NEEDS_RECONCILIATION (giữ nguyên tồn kho chờ duyệt)
+  │     ├── Nhận SUCCESS → commit DB → order → COMPLETED (trừ tồn kho) → gửi EVENT_ACK
+  │     ├── Nhận FAILURE → commit DB → order → DISPENSE_FAILED (giải phóng giữ chỗ tồn kho) → gửi EVENT_ACK
+  │     ├── Nhận UNCERTAIN → commit DB → order → NEEDS_RECONCILIATION (giữ nguyên tồn kho chờ duyệt) → gửi EVENT_ACK
   │     └── Timeout T2 không nhận gì → order → NEEDS_RECONCILIATION
   │
   └── Timeout T1 không nhận ACCEPTED → order → NEEDS_RECONCILIATION
@@ -584,29 +709,29 @@ T=T1:   Chờ COMMAND_ACCEPTED (T1 = 30 giây đề xuất — TBD)
 
 **Lưu ý timer implementation:** Backend nên implement timeout qua scheduled job hoặc persistent timer trong database (không phải in-memory timer duy nhất), vì backend có thể restart trong khoảng thời gian chờ.
 
-### 12.4. ESP32 khi mất kết nối MQTT
+### 13.5. ESP32 khi mất kết nối MQTT
 
 1. Tất cả motor phải dừng ngay nếu đang không trong chu kỳ thực thi (không cấp điện liên tục).
 2. Nếu mất kết nối khi đang `EXECUTING`: tiếp tục chạy cho hết chu kỳ thời gian `motorRunMs` (để tránh kẹt cơ giữa chừng), cập nhật NVS kết quả, lưu vào outbox và republish DISPENSE_RESULT ngay sau khi reconnect và nhận được kết nối MQTT.
 3. Sau khi reconnect, với `cleanSession=true`: ESP32 không nhận lại command cũ bị tích lũy trên broker.
 4. Publish heartbeat ngay sau khi reconnect thành công.
-5. Kiểm tra NVS Outbox (§11.2) ngay sau khi reconnect để gửi bất kỳ event nào chưa được broker xác nhận PUBACK.
+5. Kiểm tra NVS Outbox (§12.2) ngay sau khi reconnect để gửi bất kỳ event nào chưa nhận được `EVENT_ACK` từ Backend.
 
-### 12.5. Backend khi mất kết nối MQTT
+### 13.6. Backend khi mất kết nối MQTT
 
 1. Backend phải có cơ chế reconnect tự động và tiếp tục xử lý pending orders sau khi kết nối lại thành công.
 2. Với `cleanSession=false` cho backend: Sau khi reconnect, backend nhận lại các QoS 1 events từ ESP32 mà broker đã buffer trong thời gian backend gián đoạn.
-3. Backend xử lý các events này theo quy tắc idempotency (§11.3) — không tạo duplicate state transition hay trừ tồn kho trùng lặp.
+3. Backend xử lý các events này theo quy tắc idempotency (§12.4) — không tạo duplicate state transition hay trừ tồn kho trùng lặp, và luôn gửi lại `EVENT_ACK` cho ESP32.
 
 ---
 
-## 13. Ví dụ luồng đầy đủ — Happy path
+## 14. Ví dụ luồng đầy đủ — Happy path
 
 ```
 T=0s     Backend xác minh webhook thanh toán → ghi vào payment_transactions
 T=0.1s   Backend ghi dispense_command vào DB (status=PENDING)
 T=0.2s   Backend publish command vào vending/VM001/commands (QoS 1)
-T=0.5s   ESP32 nhận command
+T=0.5s   ESP32 nhận command, kiểm tra time_synced=true và expiresAt hợp lệ
 T=0.5s   ESP32 ghi NVS: cmd_state=ACCEPTED
 T=0.6s   ESP32 publish COMMAND_ACCEPTED
 T=0.7s   Backend nhận COMMAND_ACCEPTED → cập nhật dispense_command status=ACKNOWLEDGED
@@ -614,35 +739,66 @@ T=0.7s   Backend chuyển order → DISPENSING
 T=0.8s   ESP32 ghi NVS: cmd_state=EXECUTING, motorStartedAt=...
 T=0.8s   ESP32 kích hoạt motor slot 2
 T=3.6s   ESP32 dừng motor (sau motorRunMs)
-T=3.6s   ESP32 ghi NVS: cmd_state=COMPLETED, result=SUCCESS
-T=3.7s   ESP32 publish DISPENSE_RESULT (SUCCESS, MOTOR_CYCLE_ONLY)
-T=3.8s   Backend nhận DISPENSE_RESULT → ghi device_events
-T=3.9s   Backend chuyển order → COMPLETED, cập nhật tồn kho
+T=3.6s   ESP32 ghi NVS: cmd_state=COMPLETED, outbox_event=DISPENSE_RESULT(SUCCESS), outbox_pending=true
+T=3.7s   ESP32 publish DISPENSE_RESULT (SUCCESS, MOTOR_CYCLE_ONLY) vào vending/VM001/events (QoS 1)
+T=3.8s   Backend nhận DISPENSE_RESULT → ghi device_events và chuyển order → COMPLETED, trừ tồn kho trong DB transaction
+T=3.9s   DB commit thành công
+T=3.95s  Backend publish EVENT_ACK vào vending/VM001/events/ack (QoS 1)
+T=4.0s   ESP32 nhận EVENT_ACK → cập nhật NVS: outbox_pending=false, xóa outbox_event
 T=4.0s   Frontend polling nhận status COMPLETED
 T=4.1s   Hiển thị thông báo cho khách hàng
 ```
 
-## 14. Ví dụ luồng — Reboot trong khi EXECUTING
+## 15. Ví dụ luồng xử lý Reboot
+
+### 15.1. Ví dụ luồng — Reboot trong khi EXECUTING (Thực thi vật lý có thể đã bắt đầu)
 
 ```
 T=0s     Backend publish command
-T=0.5s   ESP32 nhận, ghi NVS: state=ACCEPTED
+T=0.5s   ESP32 nhận, kiểm tra Clock Trust và expiresAt, ghi NVS: state=ACCEPTED
 T=0.6s   ESP32 publish COMMAND_ACCEPTED
-T=0.8s   ESP32 ghi NVS: state=EXECUTING, bắt đầu motor
-T=1.5s   ESP32 mất điện / reboot (motor dừng không xác định)
+T=0.8s   ESP32 ghi NVS: state=EXECUTING, bắt đầu chạy motor
+T=1.5s   ESP32 mất điện / reboot (motor ngắt điện giữa chừng, kết quả vật lý bất định)
 --- reboot ---
-T=10s    ESP32 boot, đọc NVS: state=EXECUTING
-T=10.1s  ESP32 ghi NVS: state=UNCERTAIN
-T=10.5s  ESP32 reconnect MQTT, publish heartbeat
-T=10.6s  ESP32 publish DISPENSE_RESULT(result=UNCERTAIN, REBOOT_DURING_EXECUTION)
-T=10.7s  Backend nhận → chuyển order → NEEDS_RECONCILIATION
-T=10.8s  Frontend nhận status NEEDS_RECONCILIATION + message cho khách hàng
-[Admin xem xét thủ công và quyết định hành động tiếp theo]
+T=10s    ESP32 boot: tất cả GPIO motor lập tức gán LOW (OFF)
+T=10.1s  ESP32 đọc NVS: state=EXECUTING → nhận diện thực thi vật lý có thể đã diễn ra
+T=10.2s  ESP32 ghi NVS: state=UNCERTAIN, outbox_event=DISPENSE_RESULT(UNCERTAIN), outbox_pending=true
+T=10.2s  TUYỆT ĐỐI KHÔNG BẬT LẠI MOTOR
+T=10.5s  ESP32 kết nối Wi-Fi & MQTT broker, subscribe commands và events/ack, publish heartbeat
+T=10.6s  ESP32 publish DISPENSE_RESULT(result=UNCERTAIN, REBOOT_DURING_EXECUTION) vào vending/VM001/events (QoS 1)
+T=10.7s  Backend nhận → ghi device_events, chuyển order → NEEDS_RECONCILIATION, commit DB
+T=10.75s Backend publish EVENT_ACK(matching eventId) vào vending/VM001/events/ack (QoS 1)
+T=10.8s  ESP32 nhận EVENT_ACK → kiểm tra matching eventId → cập nhật NVS: outbox_pending=false, xóa outbox_event
+T=10.8s  Frontend nhận status NEEDS_RECONCILIATION + thông báo an toàn cho khách hàng
+[Quản trị viên đối soát vật lý thực địa tại máy để xử lý thủ công]
 ```
+
+### 15.2. Ví dụ luồng — Reboot trong khi ACCEPTED (Lệnh chắc chắn chưa chạy vật lý)
+
+```
+T=0s     Backend publish command (expiresAt = T + 45s)
+T=0.5s   ESP32 nhận, Clock Trust OK, ghi NVS: state=ACCEPTED (GPIO motor vẫn LOW)
+T=0.6s   ESP32 mất điện / sập nguồn trước khi bắt đầu chu kỳ motor
+--- reboot ---
+T=8s     ESP32 boot: tất cả GPIO motor lập tức gán LOW (OFF)
+T=8.1s   ESP32 đọc NVS: state=ACCEPTED → phân biệt chắc chắn motor chưa từng chạy
+T=8.2s   ESP32 KHÔNG hủy lệnh ngay; giữ motor LOW, kết nối Wi-Fi và yêu cầu SNTP sync
+T=10s    SNTP sync hoàn tất, đạt tiêu chuẩn Clock Trust (status COMPLETED, sanity check now >= BUILD_TIMESTAMP)
+T=10.1s  ESP32 kiểm tra lại NVS (state=ACCEPTED) và so sánh: currentTime < expiresAt (vẫn còn hạn 35s)
+T=10.2s  ESP32 ghi NVS: state=EXECUTING, cmd_started=now
+T=10.3s  ESP32 kích hoạt motor an toàn
+T=13.1s  ESP32 kết thúc chu kỳ motor, ghi NVS: state=COMPLETED, outbox_event=DISPENSE_RESULT(SUCCESS), outbox_pending=true
+T=13.2s  ESP32 publish DISPENSE_RESULT(SUCCESS) lên vending/VM001/events (QoS 1)
+T=13.3s  Backend nhận → ghi device_events, chuyển order → COMPLETED, trừ kho, commit DB
+T=13.35s Backend publish EVENT_ACK vào vending/VM001/events/ack (QoS 1)
+T=13.4s  ESP32 nhận EVENT_ACK → xóa matching eventId khỏi Outbox
+```
+
+*(Lưu ý: Nếu tại T=10.1s phát hiện `currentTime >= expiresAt`, hoặc nếu SNTP timeout sau 15s mà không đạt Clock Trust: ESP32 tuyệt đối không chạy motor, cập nhật NVS `state=FAILED`, lưu lỗi `COMMAND_EXPIRED_AFTER_REBOOT` hoặc `CLOCK_SYNC_TIMEOUT_AFTER_REBOOT` vào Outbox để báo về Backend).*
 
 ---
 
-## 15. Ánh xạ Slot ↔ GPIO (TBD)
+## 16. Ánh xạ Slot ↔ GPIO (TBD)
 
 Ánh xạ giữa `slotNumber` (1, 2, 3) và chân GPIO chưa được xác định vì phần cứng chưa thiết kế.
 
@@ -658,7 +814,7 @@ T=10.8s  Frontend nhận status NEEDS_RECONCILIATION + message cho khách hàng
 
 ---
 
-## 16. Các mục TBD cần xác nhận
+## 17. Các mục TBD cần xác nhận
 
 | # | Nội dung TBD | Lý do chưa chốt | Giai đoạn |
 |---|---|---|---|
@@ -674,20 +830,26 @@ T=10.8s  Frontend nhận status NEEDS_RECONCILIATION + message cho khách hàng
 
 ---
 
-## 17. Điều không được làm
+## 18. Điều không được làm
 
 | Bên | Điều cấm |
 |---|---|
 | **Backend** | Publish lệnh khi chưa xác minh giao dịch ngân hàng thật |
 | **Backend** | Publish lệnh khi chưa ghi nhận bản ghi vào DB |
-| **Backend** | Tự động phát lại lệnh sau timeout |
+| **Backend** | Tự động phát lại lệnh nhả hàng sau timeout |
+| **Backend** | Tự động tạo `commandId` mới để retry đơn hàng có kết quả bất định |
+| **Backend** | Gửi `EVENT_ACK` trước khi hoàn tất commit transaction vào database |
 | **Backend** | Xem MQTT delivery thành công là bằng chứng sản phẩm đã nhả |
 | **Backend** | Xem `MOTOR_CYCLE_ONLY` là bảo đảm sản phẩm đã rơi |
 | **ESP32** | Kích hoạt motor khi không có lệnh hợp lệ |
+| **ESP32** | Kích hoạt motor khi đồng hồ chưa đạt tiêu chuẩn Clock Trust qua SNTP (§13.1) |
 | **ESP32** | Xử lý lệnh đã hết hạn (`expiresAt` đã qua) |
 | **ESP32** | Xử lý lệnh trùng `commandId` (kiểm tra NVS) |
+| **ESP32** | Xóa NVS Outbox khi chưa nhận được `EVENT_ACK` có matching `eventId` từ Backend |
+| **ESP32** | Tự động vứt bỏ lệnh `ACCEPTED` sau reboot khi chưa thực hiện chờ đồng bộ giờ tin cậy |
+| **ESP32** | Tự ý kích hoạt motor sau reboot khi chưa xác minh được tính hợp lệ và thời hạn lệnh bằng đồng hồ tin cậy |
+| **ESP32** | Tự động kích hoạt lại motor khi lệnh trước đó ở trạng thái `EXECUTING` (phải chuyển sang `UNCERTAIN`) |
 | **ESP32** | Chạy motor vượt quá `motorRunMs` mà không có lý do bảo vệ |
 | **ESP32** | Dùng `verificationLevel=SENSOR_CONFIRMED` khi không có cảm biến |
-| **ESP32** | Tự khởi động motor sau reboot mà không có lệnh mới hợp lệ |
 | **Frontend** | Kết nối trực tiếp tới MQTT broker |
 | **Frontend** | Gửi lệnh nhả hàng theo bất kỳ kênh nào |

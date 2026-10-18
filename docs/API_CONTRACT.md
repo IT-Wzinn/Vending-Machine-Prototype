@@ -135,6 +135,8 @@ Vì môi trường production yêu cầu `SameSite=None` để SPA (trên domain
    - **Bước 3 — Xử lý khi thiếu cả hai header:**
      - Nếu cả `Origin` và `Referer` đều vắng mặt trên mutating request gửi từ trình duyệt: Lập tức từ chối với `403 Forbidden` (`error.code: "CSRF_HEADER_MISSING"`).
 
+> **Không có ngoại lệ bỏ qua (No Bypass):** Mọi request làm thay đổi dữ liệu (state-changing request) có sử dụng xác thực cookie nếu vắng mặt hoặc không vượt qua kiểm tra `Origin`/`Referer` đều bị từ chối với HTTP 403. Hệ thống tuyệt đối không âm thầm bỏ qua (silent bypass) việc kiểm tra nguồn gốc dưới bất kỳ lý do nào. Các request chỉ đọc (`GET`, `HEAD`) không làm thay đổi trạng thái nhưng vẫn được bảo vệ bởi lớp xác thực JWT cookie.
+
 > **Lưu ý cho Frontend:** Mọi lệnh gọi fetch/axios đến admin API phải luôn cấu hình `credentials: 'include'` và đính kèm header `X-Requested-With: XMLHttpRequest`.
 
 #### 1.5.4. Cấu hình CORS
@@ -679,8 +681,8 @@ Set-Cookie: admin_access_token=; HttpOnly; Secure; SameSite=None; Path=/api/v1; 
 | `PENDING_PAYMENT` | Hủy trước khi thanh toán | `CANCELLED` |
 | `PAID` | Lệnh nhả hàng được ghi nhận bền vững vào DB và đã phát đi | `DISPENSING` |
 | `DISPENSING` | ESP32 báo hoàn thành thành công | `COMPLETED` |
-| `DISPENSING` | ESP32 báo lỗi xác định | `DISPENSE_FAILED` |
-| `DISPENSING` | Timeout không nhận được phản hồi xác định | `NEEDS_RECONCILIATION` |
+| `DISPENSING` | ESP32 báo lỗi xác định (motor timeout, stall, hardware error) | `DISPENSE_FAILED` |
+| `DISPENSING` | ESP32 báo kết quả bất định (UNCERTAIN) hoặc timeout không nhận được phản hồi | `NEEDS_RECONCILIATION` |
 
 **Bất biến:**
 
