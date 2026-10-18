@@ -1,7 +1,11 @@
 package com.vendingmachine.product.repository;
 
 import com.vendingmachine.product.entity.Product;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,4 +22,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     Optional<Product> findByIdAndMachineMachineCode(UUID id, String machineCode);
 
     Optional<Product> findByMachineMachineCodeAndSlotNumber(String machineCode, Integer slotNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Product p WHERE p.id = :id AND p.machine.machineCode = :machineCode")
+    Optional<Product> findByIdAndMachineCodeForUpdate(@Param("id") UUID id, @Param("machineCode") String machineCode);
 }

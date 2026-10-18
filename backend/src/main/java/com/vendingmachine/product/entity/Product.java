@@ -87,6 +87,12 @@ public class Product {
         return Boolean.TRUE.equals(isActive) && (stockQuantity != null && stockQuantity > 0);
     }
 
+    public int getAvailableStock() {
+        int stock = stockQuantity != null ? stockQuantity : 0;
+        int reserved = reservedQuantity != null ? reservedQuantity : 0;
+        return Math.max(0, stock - reserved);
+    }
+
     public UUID getId() {
         return id;
     }

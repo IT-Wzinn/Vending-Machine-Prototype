@@ -4,6 +4,8 @@ import com.vendingmachine.machine.entity.Machine;
 import com.vendingmachine.product.entity.Product;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -36,8 +38,9 @@ public class Order {
     @Column(name = "transfer_reference", nullable = false, unique = true, length = 50)
     private String transferReference;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
-    private String status = "PENDING_PAYMENT";
+    private OrderStatus status = OrderStatus.PENDING_PAYMENT;
 
     @Column(name = "payment_expires_at", nullable = false)
     private Instant paymentExpiresAt;
@@ -51,6 +54,9 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -58,6 +64,29 @@ public class Order {
     private Instant updatedAt = Instant.now();
 
     public Order() {
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = Instant.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
     }
 
     public UUID getId() { return id; }
@@ -84,8 +113,8 @@ public class Order {
     public String getTransferReference() { return transferReference; }
     public void setTransferReference(String transferReference) { this.transferReference = transferReference; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public OrderStatus getStatus() { return status; }
+    public void setStatus(OrderStatus status) { this.status = status; }
 
     public Instant getPaymentExpiresAt() { return paymentExpiresAt; }
     public void setPaymentExpiresAt(Instant paymentExpiresAt) { this.paymentExpiresAt = paymentExpiresAt; }
@@ -98,6 +127,9 @@ public class Order {
 
     public Instant getCompletedAt() { return completedAt; }
     public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+
+    public List<OrderItem> getItems() { return items; }
+    public void setItems(List<OrderItem> items) { this.items = items; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

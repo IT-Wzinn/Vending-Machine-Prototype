@@ -38,6 +38,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
         String requestId = getOrCreateRequestId(request);
+        FieldError quantityError = ex.getBindingResult().getFieldError("quantity");
+        if (quantityError != null) {
+            String message = quantityError.getDefaultMessage() != null ? quantityError.getDefaultMessage() : "Chỉ có thể đặt 1 sản phẩm mỗi lần.";
+            log.warn("Validation failed on quantity: {} (RequestId: {})", message, requestId);
+            ApiErrorResponse response = ApiErrorResponse.of(ErrorCode.INVALID_QUANTITY, message, requestId);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
         String details = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining("; "));
