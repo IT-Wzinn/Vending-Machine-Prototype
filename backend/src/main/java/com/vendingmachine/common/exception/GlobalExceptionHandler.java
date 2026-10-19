@@ -7,9 +7,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,6 +27,22 @@ public class GlobalExceptionHandler {
         log.warn("Resource not found: {} (RequestId: {})", ex.getMessage(), requestId);
         ApiErrorResponse response = ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage(), requestId);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex, HttpServletRequest request) {
+        String requestId = getOrCreateRequestId(request);
+        log.warn("Path not found: {} (RequestId: {})", ex.getResourcePath(), requestId);
+        ApiErrorResponse response = ApiErrorResponse.of(ErrorCode.NOT_FOUND, "Đường dẫn tài nguyên không tồn tại.", requestId);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleMethodNotSupportedException(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        String requestId = getOrCreateRequestId(request);
+        log.warn("HTTP method not supported: {} (RequestId: {})", ex.getMethod(), requestId);
+        ApiErrorResponse response = ApiErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED, "Phương thức HTTP không được hỗ trợ.", requestId);
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
     @ExceptionHandler(BusinessException.class)

@@ -16,6 +16,8 @@ public final class ErrorCode {
     public static final String ORDER_NOT_PAID = "ORDER_NOT_PAID";
     public static final String DISPENSE_COMMAND_NOT_FOUND = "DISPENSE_COMMAND_NOT_FOUND";
     public static final String DEVICE_OFFLINE = "DEVICE_OFFLINE";
+    public static final String NOT_FOUND = "NOT_FOUND";
+    public static final String METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
     public static final String INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
 }

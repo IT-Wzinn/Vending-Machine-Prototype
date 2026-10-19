@@ -1,0 +1,54 @@
+spring:
+  datasource:
+    url: ${PG_TEST_DATABASE_URL:jdbc:postgresql://localhost:5432/vending_machine_dev?currentSchema=test_pg_concurrency}
+    username: ${PG_TEST_DATABASE_USERNAME:vending_user}
+    password: ${PG_TEST_DATABASE_PASSWORD:vending_dev_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+    properties:
+      hibernate:
+        default_schema: test_pg_concurrency
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    schemas: test_pg_concurrency
+    default-schema: test_pg_concurrency
+    create-schemas: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  machine:
+    default-id: VM001
+  cors:
+    allowed-origin: http://localhost:5173
+  order:
+    expiration-minutes: 15
+    cleanup-interval-ms: 60000
+  payment:
+    demo-mode: true
+    provider: sepay
+    sepay:
+      api-key: "test-sepay-secret-key"
+      bank-bin: "970422"
+      bank-name: "MBBank"
+      account-number: "DEMO123456"
+      account-name: "TEST VENDING MACHINE"
+  dispense:
+    auto-trigger: false
+    command-timeout-seconds: 45
+    motor-run-ms: 800
+    simulator:
+      enabled: true
+      async: false
+      default-scenario: SUCCESS

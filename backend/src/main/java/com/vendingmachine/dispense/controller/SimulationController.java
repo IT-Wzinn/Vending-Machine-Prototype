@@ -5,6 +5,8 @@ import com.vendingmachine.dispense.adapter.simulated.SimulatedDeviceAdapter;
 import com.vendingmachine.dispense.adapter.simulated.SimulationScenario;
 import com.vendingmachine.dispense.dto.DeviceEventMessage;
 import com.vendingmachine.dispense.service.DispenseService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,9 +15,12 @@ import java.util.Map;
 /**
  * Controller for inspecting and controlling the simulated device adapter.
  * Clearly labelled as SIMULATION; does not control physical hardware.
+ * Strictly restricted to local, dev, and test environments.
  */
 @RestController
 @RequestMapping("/api/v1/simulation/device")
+@ConditionalOnProperty(name = "app.dispense.simulator.enabled", havingValue = "true", matchIfMissing = true)
+@Profile({"local", "dev", "test", "test-postgres"})
 public class SimulationController {
 
     private final SimulatedDeviceAdapter simulatedDeviceAdapter;
