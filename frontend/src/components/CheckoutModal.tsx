@@ -27,7 +27,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
     if (!order || !isOpen) return;
 
     const terminalStatuses: OrderStatus[] = [
-      'PAID',
       'COMPLETED',
       'DISPENSE_FAILED',
       'NEEDS_RECONCILIATION',
@@ -99,8 +98,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
     if (!order) return 'Xác nhận đơn hàng';
     switch (order.status) {
       case 'PAID':
-      case 'DISPENSING':
         return 'Thanh toán thành công';
+      case 'DISPENSING':
+        return 'Đang nhả hàng';
+      case 'COMPLETED':
+        return 'Xuất hàng thành công';
       case 'EXPIRED':
         return 'Đơn hàng hết hạn';
       case 'NEEDS_RECONCILIATION':
@@ -144,18 +146,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
             {order ? (
               /* REAL ORDER PAYMENT PRESENTATION */
               <div className="space-y-5">
-                {order.status === 'PAID' || order.status === 'DISPENSING' ? (
-                  /* VERIFIED PAYMENT SUCCESS */
+                {order.status === 'PAID' || order.status === 'DISPENSING' || order.status === 'COMPLETED' ? (
+                  /* VERIFIED PAYMENT / DISPENSING / COMPLETED */
                   <div className="space-y-4 text-center py-2" data-testid="payment-success-view">
-                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
-                      <CheckCircle2 className="w-10 h-10" />
+                    <div className={`w-16 h-16 ${order.status === 'DISPENSING' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center mx-auto`}>
+                      {order.status === 'DISPENSING' ? (
+                        <Loader2 className="w-10 h-10 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-10 h-10" />
+                      )}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-emerald-900">
-                        Thanh toán đã được xác minh thành công!
+                      <h3 className={`text-base font-bold ${order.status === 'DISPENSING' ? 'text-blue-900' : 'text-emerald-900'}`}>
+                        {order.status === 'COMPLETED'
+                          ? 'Đã xuất hàng thành công!'
+                          : order.status === 'DISPENSING'
+                          ? 'Máy đang thực hiện nhả hàng...'
+                          : 'Thanh toán đã được xác minh thành công!'}
                       </h3>
                       <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
-                        Hệ thống đã nhận được tiền từ ngân hàng. Máy bán hàng đang chuẩn bị nhả sản phẩm...
+                        {order.status === 'COMPLETED'
+                          ? 'Sản phẩm đã được đưa ra khay nhận hàng bên dưới. Quý khách vui lòng lấy hàng. Cảm ơn quý khách!'
+                          : order.status === 'DISPENSING'
+                          ? 'Cơ cấu động cơ đang kích hoạt để đẩy sản phẩm ra khay. Vui lòng chờ trong giây lát...'
+                          : 'Hệ thống đã nhận được tiền từ ngân hàng. Máy bán hàng đang chuẩn bị nhả sản phẩm...'}
                       </p>
                     </div>
 
@@ -170,8 +184,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Trạng thái:</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                          {order.status === 'DISPENSING' ? 'ĐANG NHẢ HÀNG' : 'ĐÃ THANH TOÁN (PAID)'}
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                          order.status === 'COMPLETED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : order.status === 'DISPENSING'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {order.status === 'COMPLETED'
+                            ? 'HOÀN TẤT (COMPLETED)'
+                            : order.status === 'DISPENSING'
+                            ? 'ĐANG NHẢ HÀNG'
+                            : 'ĐÃ THANH TOÁN (PAID)'}
                         </span>
                       </div>
                     </div>

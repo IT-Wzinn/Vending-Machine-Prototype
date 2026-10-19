@@ -56,3 +56,12 @@ app:
       bank-name: ${SEPAY_BANK_NAME:MBBank}
       account-number: ${SEPAY_ACCOUNT_NUMBER:DEMO123456}
       account-name: ${SEPAY_ACCOUNT_NAME:DEMO SMART VENDING}
+  dispense:
+    auto-trigger: ${DISPENSE_AUTO_TRIGGER:true}
+    timeout-check-interval-ms: ${DISPENSE_TIMEOUT_CHECK_INTERVAL_MS:5000}
+    command-timeout-seconds: ${DISPENSE_COMMAND_TIMEOUT_SECONDS:45}
+    motor-run-ms: ${DISPENSE_MOTOR_RUN_MS:800}
+    simulator:
+      enabled: ${DISPENSE_SIMULATOR_ENABLED:true}
+      async: ${DISPENSE_SIMULATOR_ASYNC:false}
+      default-scenario: ${DISPENSE_SIMULATOR_DEFAULT_SCENARIO:SUCCESS}

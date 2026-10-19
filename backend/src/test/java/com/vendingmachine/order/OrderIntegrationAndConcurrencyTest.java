@@ -52,11 +52,19 @@ class OrderIntegrationAndConcurrencyTest {
     @Autowired
     private MachineRepository machineRepository;
 
+    @Autowired(required = false)
+    private com.vendingmachine.dispense.repository.DispenseCommandRepository dispenseCommandRepository;
+
+    @Autowired(required = false)
+    private com.vendingmachine.device.repository.DeviceEventRepository deviceEventRepository;
+
     private Machine testMachine;
     private Product testProduct;
 
     @BeforeEach
     void setUp() {
+        if (deviceEventRepository != null) deviceEventRepository.deleteAll();
+        if (dispenseCommandRepository != null) dispenseCommandRepository.deleteAll();
         orderItemRepository.deleteAll();
         orderRepository.deleteAll();
         productRepository.deleteAll();

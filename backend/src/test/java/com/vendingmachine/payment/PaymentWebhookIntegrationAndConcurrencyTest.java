@@ -61,11 +61,19 @@ class PaymentWebhookIntegrationAndConcurrencyTest {
     @Value("${app.payment.sepay.api-key}")
     private String configuredApiKey;
 
+    @Autowired(required = false)
+    private com.vendingmachine.dispense.repository.DispenseCommandRepository dispenseCommandRepository;
+
+    @Autowired(required = false)
+    private com.vendingmachine.device.repository.DeviceEventRepository deviceEventRepository;
+
     private Machine testMachine;
     private Product testProduct;
 
     @BeforeEach
     void setUp() {
+        if (deviceEventRepository != null) deviceEventRepository.deleteAll();
+        if (dispenseCommandRepository != null) dispenseCommandRepository.deleteAll();
         paymentTransactionRepository.deleteAll();
         orderItemRepository.deleteAll();
         orderRepository.deleteAll();

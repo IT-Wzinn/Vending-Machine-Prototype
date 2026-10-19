@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Autowired(required = false)
     private TransactionTemplate transactionTemplate;
+
+    @Autowired(required = false)
+    @Lazy
+    private com.vendingmachine.dispense.service.DispenseService dispenseService;
+
+    @Value("${app.dispense.auto-trigger:true}")
+    private boolean autoTriggerDispense = true;
 
     public PaymentServiceImpl(OrderRepository orderRepository,
                               PaymentTransactionRepository paymentTransactionRepository,
@@ -220,6 +228,29 @@ public class PaymentServiceImpl implements PaymentService {
                         rawPayloadJson, VerificationStatus.VERIFIED, "SUCCESS");
                 log.info("Order {} successfully verified and marked as PAID (Tx: {}, Amount: {} VND)",
                         order.getId(), providerTxId, receivedAmount);
+
+                if (autoTriggerDispense && dispenseService != null) {
+                    if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                                new org.springframework.transaction.support.TransactionSynchronization() {
+                                    @Override
+                                    public void afterCommit() {
+                                        try {
+                                            dispenseService.triggerDispensing(order.getId());
+                                        } catch (Exception e) {
+                                            log.error("Failed to auto-trigger dispensing for order {}", order.getId(), e);
+                                        }
+                                    }
+                                });
+                    } else {
+                        try {
+                            dispenseService.triggerDispensing(order.getId());
+                        } catch (Exception e) {
+                            log.error("Failed to auto-trigger dispensing for order {}", order.getId(), e);
+                        }
+                    }
+                }
+
                 return SePayWebhookResponseDto.ok("Payment verified and order marked as PAID");
             } else {
                 // Another thread transitioned order in between (e.g. concurrent expiration or duplicate webhook)

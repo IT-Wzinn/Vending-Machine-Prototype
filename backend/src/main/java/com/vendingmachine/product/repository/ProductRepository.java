@@ -26,4 +26,8 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id AND p.machine.machineCode = :machineCode")
     Optional<Product> findByIdAndMachineCodeForUpdate(@Param("id") UUID id, @Param("machineCode") String machineCode);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    Optional<Product> findByIdForUpdate(@Param("id") UUID id);
 }

@@ -39,3 +39,11 @@ app:
       bank-name: "MBBank"
       account-number: "0345678999"
       account-name: "TEST VENDING MACHINE"
+  dispense:
+    auto-trigger: false
+    command-timeout-seconds: 45
+    motor-run-ms: 800
+    simulator:
+      enabled: true
+      async: false
+      default-scenario: SUCCESS
