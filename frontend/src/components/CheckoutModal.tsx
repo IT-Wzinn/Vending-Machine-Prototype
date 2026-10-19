@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, Clock, AlertCircle, ShieldAlert, Loader2, Sparkles } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { createOrder } from '../services/api';
+import { createOrder, getOrderStatus } from '../services/api';
 import { formatVnd } from '../utils/formatters';
-import type { Order } from '../types/order';
+import type { Order, OrderStatus } from '../types/order';
 import { ApiError } from '../types/api';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -21,6 +21,37 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
   const [errorNotice, setErrorNotice] = useState<{ code: string; message: string; isPhase4Dependency?: boolean } | null>(
     null
   );
+
+  // Poll order status every 3s while order is PENDING_PAYMENT
+  useEffect(() => {
+    if (!order || !isOpen) return;
+
+    const terminalStatuses: OrderStatus[] = [
+      'PAID',
+      'COMPLETED',
+      'DISPENSE_FAILED',
+      'NEEDS_RECONCILIATION',
+      'EXPIRED',
+      'CANCELLED',
+    ];
+
+    if (terminalStatuses.includes(order.status)) {
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      try {
+        const res = await getOrderStatus(order.orderId);
+        if (res.status !== order.status) {
+          setOrder((prev) => (prev ? { ...prev, status: res.status } : null));
+        }
+      } catch (err) {
+        console.warn('Polling order status failed:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [order, isOpen]);
 
   if (!isOpen) return null;
 
@@ -64,6 +95,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
     }
   };
 
+  const getModalTitle = () => {
+    if (!order) return 'Xác nhận đơn hàng';
+    switch (order.status) {
+      case 'PAID':
+      case 'DISPENSING':
+        return 'Thanh toán thành công';
+      case 'EXPIRED':
+        return 'Đơn hàng hết hạn';
+      case 'NEEDS_RECONCILIATION':
+        return 'Cần đối soát giao dịch';
+      case 'DISPENSE_FAILED':
+        return 'Sự cố xuất hàng';
+      default:
+        return 'Thông tin thanh toán';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
@@ -79,7 +127,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
           {/* Header */}
           <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-bg/40">
             <h2 id="checkout-modal-title" className="font-bold text-lg text-brand-text">
-              {order ? 'Thông tin thanh toán' : 'Xác nhận đơn hàng'}
+              {getModalTitle()}
             </h2>
             <button
               id="close-checkout-modal-btn"
@@ -94,48 +142,210 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
 
           <div className="p-6">
             {order ? (
-              /* REAL ORDER PAYMENT PRESENTATION (If returned by Backend) */
+              /* REAL ORDER PAYMENT PRESENTATION */
               <div className="space-y-5">
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-1">
-                    Đơn hàng đã được tạo thành công
-                  </span>
-                  <p className="font-mono text-sm font-bold text-brand-primary">{order.publicOrderCode}</p>
-                </div>
-
-                {/* QR Code Presentation */}
-                {order.payment && order.payment.paymentQrData ? (
-                  <div className="flex flex-col items-center justify-center p-6 bg-brand-bg rounded-2xl border border-brand-border">
-                    <div className="p-3 bg-white rounded-xl shadow-xs border border-brand-border mb-3">
-                      <QRCodeSVG value={order.payment.paymentQrData} size={180} />
+                {order.status === 'PAID' || order.status === 'DISPENSING' ? (
+                  /* VERIFIED PAYMENT SUCCESS */
+                  <div className="space-y-4 text-center py-2" data-testid="payment-success-view">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                      <CheckCircle2 className="w-10 h-10" />
                     </div>
-                    <span className="text-xs text-brand-text-muted">Quét mã bằng ứng dụng Ngân hàng</span>
-                    <div className="mt-3 text-center space-y-1">
-                      <p className="text-xs font-semibold text-brand-text">
-                        Ngân hàng: {order.payment.bankName} • {order.payment.bankAccountNumber}
-                      </p>
-                      <p className="text-xs text-brand-text-muted">
-                        Chủ tài khoản: <span className="font-bold">{order.payment.bankAccountName}</span>
-                      </p>
-                      <p className="text-xs font-mono font-bold text-brand-primary">
-                        Nội dung CK: {order.payment.transferReference}
+                    <div>
+                      <h3 className="text-base font-bold text-emerald-900">
+                        Thanh toán đã được xác minh thành công!
+                      </h3>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                        Hệ thống đã nhận được tiền từ ngân hàng. Máy bán hàng đang chuẩn bị nhả sản phẩm...
                       </p>
                     </div>
-                  </div>
-                ) : null}
 
-                {/* Amount & Time limit */}
-                <div className="flex justify-between items-center p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm">
-                  <div className="flex items-center gap-2 text-brand-text-muted">
-                    <Clock className="w-4 h-4 text-brand-primary" />
-                    <span>Hạn thanh toán:</span>
-                  </div>
-                  <span className="font-bold text-brand-primary">15 phút</span>
-                </div>
+                    <div className="p-4 rounded-2xl bg-brand-bg border border-brand-border text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Mã đơn hàng:</span>
+                        <span className="font-mono font-bold text-brand-primary">{order.publicOrderCode}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Số tiền đã xác minh:</span>
+                        <span className="font-bold text-emerald-700">{formatVnd(order.totalAmountVnd)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Trạng thái:</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                          {order.status === 'DISPENSING' ? 'ĐANG NHẢ HÀNG' : 'ĐÃ THANH TOÁN (PAID)'}
+                        </span>
+                      </div>
+                    </div>
 
-                <p className="text-[11px] text-center text-brand-text-subtle">
-                  Hệ thống máy sẽ tự động kích hoạt nhả hàng sau khi nhận tín hiệu giao dịch hợp lệ từ ngân hàng.
-                </p>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
+                      >
+                        Hoàn tất / Đóng
+                      </button>
+                    </div>
+                  </div>
+                ) : order.status === 'EXPIRED' ? (
+                  /* EXPIRED ORDER */
+                  <div className="space-y-4 text-center py-2" data-testid="payment-expired-view">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
+                      <Clock className="w-10 h-10" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-amber-900">
+                        Đơn hàng đã hết hạn thanh toán
+                      </h3>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                        Thời gian giữ chỗ 15 phút đã kết thúc và đơn hàng đã bị hủy tự động. Vui lòng đặt lại đơn mới.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Mã đơn hàng:</span>
+                        <span className="font-mono font-bold text-brand-text">{order.publicOrderCode}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Trạng thái:</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                          HẾT HẠN (EXPIRED)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng cửa sổ
+                      </button>
+                    </div>
+                  </div>
+                ) : order.status === 'NEEDS_RECONCILIATION' ? (
+                  /* NEEDS RECONCILIATION */
+                  <div className="space-y-4 text-center py-2" data-testid="payment-reconciliation-view">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-purple-600">
+                      <ShieldAlert className="w-10 h-10" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-purple-900">
+                        Giao dịch cần đối soát
+                      </h3>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                        Hệ thống ghi nhận tiền chuyển đến sau khi đơn hết hạn hoặc có bất thường. Máy không xuất hàng để bảo vệ khách. Vui lòng chụp màn hình thông tin đơn và liên hệ hỗ trợ.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Mã đơn hàng:</span>
+                        <span className="font-mono font-bold text-brand-text">{order.publicOrderCode}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Nội dung đối soát:</span>
+                        <span className="font-mono font-bold text-brand-primary">{order.payment?.transferReference}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng cửa sổ
+                      </button>
+                    </div>
+                  </div>
+                ) : order.status === 'DISPENSE_FAILED' ? (
+                  /* DISPENSE FAILED */
+                  <div className="space-y-4 text-center py-2" data-testid="payment-dispense-failed-view">
+                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600">
+                      <AlertCircle className="w-10 h-10" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-rose-900">
+                        Sự cố khi xuất hàng
+                      </h3>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                        Máy gặp sự cố cơ cấu khi đẩy sản phẩm. Tiền của bạn đã được ghi nhận. Vui lòng liên hệ nhân viên vận hành để được hỗ trợ hoặc hoàn tiền.
+                      </p>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng cửa sổ
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* PENDING_PAYMENT: QR CODE & POLLING INDICATOR */
+                  <>
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                      <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                        Đơn hàng đã được tạo thành công
+                      </span>
+                      <p className="font-mono text-sm font-bold text-brand-primary">{order.publicOrderCode}</p>
+                    </div>
+
+                    {/* QR Code Presentation */}
+                    {order.payment && order.payment.paymentQrData ? (
+                      <div className="flex flex-col items-center justify-center p-6 bg-brand-bg rounded-2xl border border-brand-border">
+                        <div className="p-3 bg-white rounded-xl shadow-xs border border-brand-border mb-3">
+                          <QRCodeSVG value={order.payment.paymentQrData} size={180} />
+                        </div>
+                        <span className="text-xs text-brand-text-muted">Quét mã bằng ứng dụng Ngân hàng</span>
+                        <div className="mt-3 text-center space-y-1">
+                          <p className="text-xs font-semibold text-brand-text">
+                            Ngân hàng: {order.payment.bankName} • {order.payment.bankAccountNumber}
+                          </p>
+                          <p className="text-xs text-brand-text-muted">
+                            Chủ tài khoản: <span className="font-bold">{order.payment.bankAccountName}</span>
+                          </p>
+                          <p className="text-xs font-mono font-bold text-brand-primary">
+                            Nội dung CK: {order.payment.transferReference}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Live Polling Status Indicator */}
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-brand-primary/5 border border-brand-primary/10 text-xs text-brand-primary">
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0 text-brand-primary" />
+                      <span>Đang chờ tín hiệu thanh toán từ ngân hàng (tự động cập nhật mỗi 3s)...</span>
+                    </div>
+
+                    {/* Amount & Time limit */}
+                    <div className="flex justify-between items-center p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm">
+                      <div className="flex items-center gap-2 text-brand-text-muted">
+                        <Clock className="w-4 h-4 text-brand-primary" />
+                        <span>Hạn thanh toán:</span>
+                      </div>
+                      <span className="font-bold text-brand-primary">15 phút</span>
+                    </div>
+
+                    <p className="text-[11px] text-center text-brand-text-subtle">
+                      Hệ thống máy sẽ tự động kích hoạt nhả hàng sau khi nhận tín hiệu giao dịch hợp lệ từ ngân hàng.
+                    </p>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                      >
+                        Đóng / Quay lại sau
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               /* ORDER CONFIRMATION FLOW */

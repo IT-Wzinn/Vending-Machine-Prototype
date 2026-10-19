@@ -48,7 +48,11 @@ app:
     expiration-minutes: ${ORDER_EXPIRATION_MINUTES:15}
     cleanup-interval-ms: ${ORDER_CLEANUP_INTERVAL_MS:60000}
   payment:
-    demo-mode: true
-    bank-name: "DEMO - Ngân hàng Thử nghiệm"
-    account-number: "DEMO123456"
-    account-name: "DEMO SMART VENDING"
+    demo-mode: ${PAYMENT_DEMO_MODE:true}
+    provider: sepay
+    sepay:
+      api-key: ${SEPAY_API_KEY:}
+      bank-bin: ${SEPAY_BANK_BIN:970422}
+      bank-name: ${SEPAY_BANK_NAME:MBBank}
+      account-number: ${SEPAY_ACCOUNT_NUMBER:DEMO123456}
+      account-name: ${SEPAY_ACCOUNT_NAME:DEMO SMART VENDING}

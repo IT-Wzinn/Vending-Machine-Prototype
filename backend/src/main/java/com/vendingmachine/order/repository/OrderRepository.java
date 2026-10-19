@@ -2,7 +2,9 @@ package com.vendingmachine.order.repository;
 
 import com.vendingmachine.order.entity.Order;
 import com.vendingmachine.order.entity.OrderStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +38,21 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
                                    @Param("expectedStatus") OrderStatus expectedStatus,
                                    @Param("newStatus") OrderStatus newStatus,
                                    @Param("now") Instant now);
+
+    /**
+     * Atomic payment confirmation: transitions PENDING_PAYMENT to PAID and records paidAt.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Order o SET o.status = com.vendingmachine.order.entity.OrderStatus.PAID, o.paidAt = :paidAt, o.updatedAt = :now WHERE o.id = :id AND o.status = com.vendingmachine.order.entity.OrderStatus.PENDING_PAYMENT")
+    int markOrderAsPaidIfPending(@Param("id") UUID id,
+                                 @Param("paidAt") Instant paidAt,
+                                 @Param("now") Instant now);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findByIdForUpdate(@Param("id") UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.transferReference = :transferReference")
+    Optional<Order> findByTransferReferenceForUpdate(@Param("transferReference") String transferReference);
 }

@@ -12,6 +12,7 @@ import com.vendingmachine.order.dto.OrderStatusResponseDto;
 import com.vendingmachine.order.entity.Order;
 import com.vendingmachine.order.entity.OrderStatus;
 import com.vendingmachine.order.repository.OrderRepository;
+import com.vendingmachine.payment.service.PaymentService;
 import com.vendingmachine.product.entity.Product;
 import com.vendingmachine.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +50,9 @@ class OrderServiceTest {
     @Mock
     private MachineRepository machineRepository;
 
+    @Mock
+    private PaymentService paymentService;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
@@ -62,9 +66,6 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(orderService, "expirationMinutes", 15);
-        ReflectionTestUtils.setField(orderService, "demoBankName", "DEMO Bank");
-        ReflectionTestUtils.setField(orderService, "demoAccountNumber", "DEMO123456");
-        ReflectionTestUtils.setField(orderService, "demoAccountName", "DEMO SMART VENDING");
 
         machineId = UUID.randomUUID();
         activeMachine = new Machine();
@@ -111,6 +112,11 @@ class OrderServiceTest {
         when(orderRepository.existsByPublicOrderCode(anyString())).thenReturn(false);
         when(orderRepository.existsByTransferReference(anyString())).thenReturn(false);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderResponseDto.OrderPaymentDto paymentDto = new OrderResponseDto.OrderPaymentDto(
+                "VM001AB3F", "000201...", "DEMO123456", "DEMO SMART VENDING", "DEMO Bank", 8000, Instant.now().plus(15, ChronoUnit.MINUTES), null
+        );
+        when(paymentService.createPaymentInstructions(any(Order.class))).thenReturn(paymentDto);
 
         OrderResponseDto response = orderService.createOrder(request);
 
@@ -253,6 +259,10 @@ class OrderServiceTest {
         order.setUpdatedAt(Instant.now());
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        OrderResponseDto.OrderPaymentDto paymentDto = new OrderResponseDto.OrderPaymentDto(
+                "VM001AB3F", "000201...", "DEMO123456", "DEMO SMART VENDING", "DEMO Bank", 8000, Instant.now().plus(15, ChronoUnit.MINUTES), null
+        );
+        when(paymentService.createPaymentInstructions(any(Order.class))).thenReturn(paymentDto);
 
         OrderResponseDto dto = orderService.getOrder(orderId);
 
@@ -285,6 +295,10 @@ class OrderServiceTest {
         when(orderRepository.updateOrderStatusIfExpected(eq(orderId), eq(OrderStatus.PENDING_PAYMENT), eq(OrderStatus.EXPIRED), any(Instant.class)))
                 .thenReturn(1);
         when(productRepository.findById(productId)).thenReturn(Optional.of(inStockProduct));
+        OrderResponseDto.OrderPaymentDto paymentDto = new OrderResponseDto.OrderPaymentDto(
+                "VM001AB3F", "000201...", "DEMO123456", "DEMO SMART VENDING", "DEMO Bank", 8000, Instant.now().plus(15, ChronoUnit.MINUTES), null
+        );
+        when(paymentService.createPaymentInstructions(any(Order.class))).thenReturn(paymentDto);
 
         OrderResponseDto dto = orderService.getOrder(orderId);
 

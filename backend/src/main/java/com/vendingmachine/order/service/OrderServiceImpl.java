@@ -13,6 +13,7 @@ import com.vendingmachine.order.entity.Order;
 import com.vendingmachine.order.entity.OrderItem;
 import com.vendingmachine.order.entity.OrderStatus;
 import com.vendingmachine.order.repository.OrderRepository;
+import com.vendingmachine.payment.service.PaymentService;
 import com.vendingmachine.product.entity.Product;
 import com.vendingmachine.product.repository.ProductRepository;
 import org.slf4j.Logger;
@@ -43,25 +44,19 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final MachineRepository machineRepository;
+    private final PaymentService paymentService;
 
     @Value("${app.order.expiration-minutes:15}")
     private int expirationMinutes;
 
-    @Value("${app.payment.bank-name:DEMO - Ngân hàng Thử nghiệm}")
-    private String demoBankName;
-
-    @Value("${app.payment.account-number:DEMO123456}")
-    private String demoAccountNumber;
-
-    @Value("${app.payment.account-name:DEMO SMART VENDING}")
-    private String demoAccountName;
-
     public OrderServiceImpl(OrderRepository orderRepository,
                             ProductRepository productRepository,
-                            MachineRepository machineRepository) {
+                            MachineRepository machineRepository,
+                            PaymentService paymentService) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.machineRepository = machineRepository;
+        this.paymentService = paymentService;
     }
 
     @Override
@@ -147,8 +142,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("Created order {} (code: {}, transferRef: {}, amount: {} VND)",
                 savedOrder.getId(), savedOrder.getPublicOrderCode(), savedOrder.getTransferReference(), savedOrder.getTotalAmountVnd());
 
-        // 8. Build payment instructions (marked as DEMO mode)
-        OrderResponseDto.OrderPaymentDto paymentDto = buildDemoPaymentDto(savedOrder);
+        // 8. Build payment instructions (via PaymentService with VietQR)
+        OrderResponseDto.OrderPaymentDto paymentDto = paymentService.createPaymentInstructions(savedOrder);
         return mapToOrderResponseDto(savedOrder, paymentDto, null);
     }
 
@@ -161,7 +156,7 @@ public class OrderServiceImpl implements OrderService {
         // Check and handle expiration if pending and time passed
         checkAndHandleExpiration(order);
 
-        OrderResponseDto.OrderPaymentDto paymentDto = buildDemoPaymentDto(order);
+        OrderResponseDto.OrderPaymentDto paymentDto = paymentService.createPaymentInstructions(order);
         OrderResponseDto.OrderDispensingDto dispensingDto = buildDispensingDto(order);
 
         return mapToOrderResponseDto(order, paymentDto, dispensingDto);
@@ -301,22 +296,7 @@ public class OrderServiceImpl implements OrderService {
         return sb.toString();
     }
 
-    private OrderResponseDto.OrderPaymentDto buildDemoPaymentDto(Order order) {
-        // Transparent DEMO QR data per instruction: does NOT mimic real banking credentials
-        String demoQrData = String.format("DEMO_PAYMENT_INSTRUCTION:REF=%s:AMOUNT=%d:ACCOUNT=%s",
-                order.getTransferReference(), order.getTotalAmountVnd(), demoAccountNumber);
 
-        return new OrderResponseDto.OrderPaymentDto(
-                order.getTransferReference(),
-                demoQrData,
-                demoAccountNumber,
-                demoAccountName,
-                demoBankName,
-                order.getTotalAmountVnd(),
-                order.getPaymentExpiresAt(),
-                order.getPaidAt()
-        );
-    }
 
     private OrderResponseDto.OrderDispensingDto buildDispensingDto(Order order) {
         String result = null;
@@ -350,6 +330,7 @@ public class OrderServiceImpl implements OrderService {
 
     private String determineCustomerStatusMessage(Order order) {
         return switch (order.getStatus()) {
+            case PAID -> "Thanh toán thành công. Đang chuẩn bị sản phẩm cho bạn...";
             case EXPIRED -> "Đơn hàng đã hết hạn thanh toán.";
             case DISPENSE_FAILED -> "Máy có thể gặp sự cố khi nhả hàng. Vui lòng liên hệ nhân viên hỗ trợ và không thanh toán thêm lần nữa.";
             case NEEDS_RECONCILIATION -> "Đơn hàng của bạn đang được kiểm tra. Vui lòng không thanh toán thêm lần nữa và liên hệ nhân viên nếu cần hỗ trợ.";

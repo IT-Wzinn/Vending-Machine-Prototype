@@ -32,6 +32,10 @@ app:
     cleanup-interval-ms: 60000
   payment:
     demo-mode: true
-    bank-name: "DEMO - Ngân hàng Thử nghiệm"
-    account-number: "DEMO123456"
-    account-name: "DEMO SMART VENDING"
+    provider: sepay
+    sepay:
+      api-key: "test-sepay-secret-key"
+      bank-bin: "970422"
+      bank-name: "MBBank"
+      account-number: "0345678999"
+      account-name: "TEST VENDING MACHINE"
