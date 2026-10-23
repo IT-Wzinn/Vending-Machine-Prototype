@@ -196,15 +196,28 @@ public class OrderServiceImpl implements OrderService {
         if (updatedRows > 0) {
             // Exactly one thread wins the transition; release reserved stock
             Order order = orderRepository.findById(orderId).orElse(null);
-            if (order != null && order.getProduct() != null) {
-                UUID productId = order.getProduct().getId();
-                Product product = productRepository.findById(productId).orElse(null);
-                if (product != null) {
-                    int newReserved = Math.max(0, product.getReservedQuantity() - order.getQuantity());
-                    product.setReservedQuantity(newReserved);
-                    productRepository.save(product);
-                    log.info("Released stock for expired order {} (product: {}, newReserved: {})",
-                            orderId, product.getName(), newReserved);
+            if (order != null) {
+                if (order.isReservationHeld()) {
+                    order.setReservationHeld(false);
+                    orderRepository.save(order);
+
+                    if (order.getProduct() != null) {
+                        UUID productId = order.getProduct().getId();
+                        Product product = productRepository.findByIdForUpdate(productId)
+                                .orElseGet(() -> productRepository.findById(productId).orElse(null));
+                        if (product != null) {
+                            int qty = order.getQuantity() != null ? order.getQuantity() : 1;
+                            if (product.getReservedQuantity() >= qty) {
+                                product.setReservedQuantity(product.getReservedQuantity() - qty);
+                                productRepository.save(product);
+                                log.info("Released stock reservation for expired order {} (product: {}, newReserved: {})",
+                                        orderId, product.getName(), product.getReservedQuantity());
+                            } else {
+                                log.error("INVENTORY INCONSISTENCY: Product {} has reservedQuantity={} less than order quantity {}",
+                                        productId, product.getReservedQuantity(), qty);
+                            }
+                        }
+                    }
                 }
             }
             return true;

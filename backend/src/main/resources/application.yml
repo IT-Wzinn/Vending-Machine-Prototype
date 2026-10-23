@@ -65,3 +65,20 @@ app:
       enabled: ${DISPENSE_SIMULATOR_ENABLED:true}
       async: ${DISPENSE_SIMULATOR_ASYNC:false}
       default-scenario: ${DISPENSE_SIMULATOR_DEFAULT_SCENARIO:SUCCESS}
+    recovery:
+      enabled: ${DISPENSE_RECOVERY_ENABLED:true}
+      interval-ms: ${DISPENSE_RECOVERY_INTERVAL_MS:10000}
+      min-age-seconds: ${DISPENSE_RECOVERY_MIN_AGE_SECONDS:30}
+      max-age-minutes: ${DISPENSE_RECOVERY_MAX_AGE_MINUTES:15}
+      tagger-enabled: ${DISPENSE_RECOVERY_TAGGER_ENABLED:true}
+      tagger-interval-ms: ${DISPENSE_RECOVERY_TAGGER_INTERVAL_MS:60000}
+  admin:
+    jwt:
+      secret: ${APP_ADMIN_JWT_SECRET:}
+      expiration-seconds: ${APP_ADMIN_JWT_EXPIRATION_SECONDS:28800}
+    cookie:
+      secure: ${APP_ADMIN_COOKIE_SECURE:false}
+    bootstrap:
+      username: ${APP_ADMIN_BOOTSTRAP_USERNAME:}
+      password: ${APP_ADMIN_BOOTSTRAP_PASSWORD:}
+

@@ -45,6 +45,9 @@ class PaymentServiceTest {
     @Mock
     private VietQrService vietQrService;
 
+    @Mock
+    private com.vendingmachine.dispense.service.DispenseService dispenseService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -63,6 +66,8 @@ class PaymentServiceTest {
         ReflectionTestUtils.setField(paymentService, "accountNumber", "0345678999");
         ReflectionTestUtils.setField(paymentService, "bankName", "MBBank");
         ReflectionTestUtils.setField(paymentService, "accountName", "SMART VENDING");
+        ReflectionTestUtils.setField(paymentService, "dispenseService", dispenseService);
+        ReflectionTestUtils.setField(paymentService, "autoTriggerDispense", true);
 
         orderId = UUID.randomUUID();
         sampleOrder = new Order();
@@ -123,6 +128,8 @@ class PaymentServiceTest {
 
         // Xác nhận markOrderAsPaidIfPending được gọi
         verify(orderRepository).markOrderAsPaidIfPending(eq(orderId), any(Instant.class), any(Instant.class));
+        // Xác nhận auto-trigger nhả hàng được gọi
+        verify(dispenseService).triggerDispensing(orderId);
     }
 
     @Test
@@ -138,6 +145,7 @@ class PaymentServiceTest {
         assertThat(response.isSuccess()).isTrue();
         verifyNoInteractions(orderRepository);
         verify(paymentTransactionRepository, never()).saveAndFlush(any());
+        verifyNoInteractions(dispenseService);
     }
 
     @Test
@@ -159,6 +167,7 @@ class PaymentServiceTest {
         verify(paymentTransactionRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getVerificationStatus()).isEqualTo(VerificationStatus.UNMATCHED);
         assertThat(captor.getValue().getOrder()).isNull();
+        verifyNoInteractions(dispenseService);
     }
 
     @Test
@@ -183,6 +192,7 @@ class PaymentServiceTest {
         assertThat(captor.getValue().getAmountVnd()).isEqualTo(10000);
 
         verify(orderRepository, never()).markOrderAsPaidIfPending(any(), any(), any());
+        verifyNoInteractions(dispenseService);
     }
 
     @Test
@@ -210,6 +220,7 @@ class PaymentServiceTest {
         // Chuyển sang NEEDS_RECONCILIATION để đối soát hoàn tiền
         verify(orderRepository).updateOrderStatusIfExpected(eq(orderId), eq(OrderStatus.EXPIRED), eq(OrderStatus.NEEDS_RECONCILIATION), any());
         verify(orderRepository, never()).markOrderAsPaidIfPending(any(), any(), any());
+        verifyNoInteractions(dispenseService);
     }
 
     @Test
@@ -235,5 +246,52 @@ class PaymentServiceTest {
         assertThat(captor.getValue().getVerificationStatus()).isEqualTo(VerificationStatus.DUPLICATE);
 
         verify(orderRepository, never()).markOrderAsPaidIfPending(any(), any(), any());
+        verifyNoInteractions(dispenseService);
+    }
+
+    @Test
+    @DisplayName("Auto-trigger nhả hàng gặp ngoại lệ: không làm đổ vỡ webhook, thanh toán vẫn được ghi nhận PAID")
+    void processWebhook_AutoTriggerException_HandledGracefully() {
+        SePayWebhookDto payload = new SePayWebhookDto();
+        payload.setId(5006L);
+        payload.setTransferType("in");
+        payload.setTransferAmount(15000);
+        payload.setCode("VM001AB3F");
+        payload.setContent("VM001AB3F chuyen khoan");
+        payload.setTransactionDate("2026-10-19 10:00:00");
+
+        when(paymentTransactionRepository.existsByProviderAndProviderTransactionId("SEPAY", "5006")).thenReturn(false);
+        when(orderRepository.findByTransferReference("VM001AB3F")).thenReturn(Optional.of(sampleOrder));
+        when(orderRepository.markOrderAsPaidIfPending(eq(orderId), any(Instant.class), any(Instant.class))).thenReturn(1);
+        when(dispenseService.triggerDispensing(orderId)).thenThrow(new RuntimeException("Simulated adapter error"));
+
+        SePayWebhookResponseDto response = paymentService.processSePayWebhook("Apikey " + API_KEY, payload);
+
+        assertThat(response.isSuccess()).isTrue();
+        verify(paymentTransactionRepository).saveAndFlush(any(PaymentTransaction.class));
+        verify(dispenseService).triggerDispensing(orderId);
+    }
+
+    @Test
+    @DisplayName("Auto-trigger bị tắt (autoTriggerDispense = false): không gọi dispenseService")
+    void processWebhook_AutoTriggerDisabled_DoesNotTriggerDispensing() {
+        ReflectionTestUtils.setField(paymentService, "autoTriggerDispense", false);
+
+        SePayWebhookDto payload = new SePayWebhookDto();
+        payload.setId(5007L);
+        payload.setTransferType("in");
+        payload.setTransferAmount(15000);
+        payload.setCode("VM001AB3F");
+        payload.setContent("VM001AB3F chuyen khoan");
+        payload.setTransactionDate("2026-10-19 10:00:00");
+
+        when(paymentTransactionRepository.existsByProviderAndProviderTransactionId("SEPAY", "5007")).thenReturn(false);
+        when(orderRepository.findByTransferReference("VM001AB3F")).thenReturn(Optional.of(sampleOrder));
+        when(orderRepository.markOrderAsPaidIfPending(eq(orderId), any(Instant.class), any(Instant.class))).thenReturn(1);
+
+        SePayWebhookResponseDto response = paymentService.processSePayWebhook("Apikey " + API_KEY, payload);
+
+        assertThat(response.isSuccess()).isTrue();
+        verifyNoInteractions(dispenseService);
     }
 }

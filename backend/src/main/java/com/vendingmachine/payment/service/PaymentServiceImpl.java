@@ -33,6 +33,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.transaction.PlatformTransactionManager;
+
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
@@ -64,6 +67,9 @@ public class PaymentServiceImpl implements PaymentService {
     private String accountName;
 
     @Autowired(required = false)
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired(required = false)
     private TransactionTemplate transactionTemplate;
 
     @Autowired(required = false)
@@ -81,6 +87,13 @@ public class PaymentServiceImpl implements PaymentService {
         this.paymentTransactionRepository = paymentTransactionRepository;
         this.vietQrService = vietQrService;
         this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (this.transactionTemplate == null && this.transactionManager != null) {
+            this.transactionTemplate = new TransactionTemplate(this.transactionManager);
+        }
     }
 
     @Override

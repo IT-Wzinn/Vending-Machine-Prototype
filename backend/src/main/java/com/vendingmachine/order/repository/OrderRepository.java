@@ -3,6 +3,8 @@ package com.vendingmachine.order.repository;
 import com.vendingmachine.order.entity.Order;
 import com.vendingmachine.order.entity.OrderStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,7 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.UUID;      
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
@@ -26,7 +28,12 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     boolean existsByTransferReference(String transferReference);
 
+    Page<Order> findByStatus(OrderStatus status, Pageable pageable);
+
+    Page<Order> findByStatusAndPublicOrderCodeContainingIgnoreCase(OrderStatus status, String orderCode, Pageable pageable);
+
     List<Order> findByStatusAndPaymentExpiresAtBefore(OrderStatus status, Instant cutoff);
+
 
     /**
      * Atomic state transition: ensures only one thread successfully transitions the order
@@ -55,4 +62,31 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT o FROM Order o WHERE o.transferReference = :transferReference")
     Optional<Order> findByTransferReferenceForUpdate(@Param("transferReference") String transferReference);
+
+    /**
+     * Find orphaned PAID order IDs that have been paid within [maxAgeCutoff, minAgeCutoff]
+     * and have no associated dispense commands.
+     */
+    @Query("SELECT o.id FROM Order o " +
+           "WHERE o.status = com.vendingmachine.order.entity.OrderStatus.PAID " +
+           "  AND o.paidAt IS NOT NULL " +
+           "  AND o.paidAt <= :minAgeCutoff " +
+           "  AND o.paidAt >= :maxAgeCutoff " +
+           "  AND NOT EXISTS (SELECT 1 FROM DispenseCommand dc WHERE dc.order = o) " +
+           "ORDER BY o.paidAt ASC")
+    List<UUID> findOrphanedPaidOrderIdsForRecovery(@Param("minAgeCutoff") Instant minAgeCutoff,
+                                                  @Param("maxAgeCutoff") Instant maxAgeCutoff);
+
+    /**
+     * Find stale PAID order IDs that have been paid strictly before maxAgeCutoff
+     * and have no associated dispense commands.
+     */
+    @Query("SELECT o.id FROM Order o " +
+           "WHERE o.status = com.vendingmachine.order.entity.OrderStatus.PAID " +
+           "  AND o.paidAt IS NOT NULL " +
+           "  AND o.paidAt < :maxAgeCutoff " +
+           "  AND NOT EXISTS (SELECT 1 FROM DispenseCommand dc WHERE dc.order = o) " +
+           "ORDER BY o.paidAt ASC")
+    List<UUID> findStalePaidOrderIdsForReconciliation(@Param("maxAgeCutoff") Instant maxAgeCutoff);
 }
+

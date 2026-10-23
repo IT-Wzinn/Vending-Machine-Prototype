@@ -19,5 +19,9 @@ public final class ErrorCode {
     public static final String NOT_FOUND = "NOT_FOUND";
     public static final String METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     public static final String UNAUTHORIZED = "UNAUTHORIZED";
+    public static final String FORBIDDEN = "FORBIDDEN";
+    public static final String CSRF_HEADER_MISSING = "CSRF_HEADER_MISSING";
+    public static final String TOKEN_EXPIRED = "TOKEN_EXPIRED";
     public static final String INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
 }
+

@@ -54,6 +54,9 @@ public class Order {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "is_reservation_held", nullable = false)
+    private boolean reservationHeld = true;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -127,6 +130,9 @@ public class Order {
 
     public Instant getCompletedAt() { return completedAt; }
     public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+
+    public boolean isReservationHeld() { return reservationHeld; }
+    public void setReservationHeld(boolean reservationHeld) { this.reservationHeld = reservationHeld; }
 
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }

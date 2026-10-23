@@ -205,9 +205,18 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
       {/* Footer */}
       <footer className="w-full border-t border-brand-border/60 bg-white/60 py-6 text-center text-xs text-brand-text-muted mt-12">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-brand-primary" />
-            <span className="font-semibold text-brand-primary">Smart Vending Machine Prototype</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-brand-primary" />
+              <span className="font-semibold text-brand-primary">Smart Vending Machine Prototype</span>
+            </div>
+            <span className="text-brand-text-subtle hidden sm:inline">•</span>
+            <a
+              href="/admin"
+              className="text-[11px] font-semibold text-brand-text-muted hover:text-brand-primary hover:underline transition-colors"
+            >
+              Cổng quản trị đối soát
+            </a>
           </div>
           <p className="text-[11px] text-brand-text-subtle">
             Hệ thống bán hàng tự động tích hợp ESP32 • Spring Boot • React TypeScript

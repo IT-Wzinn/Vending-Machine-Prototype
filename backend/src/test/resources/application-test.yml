@@ -47,3 +47,16 @@ app:
       enabled: true
       async: false
       default-scenario: SUCCESS
+    recovery:
+      enabled: false
+      interval-ms: 10000
+      min-age-seconds: 30
+      max-age-minutes: 15
+      tagger-enabled: false
+      tagger-interval-ms: 60000
+  admin:
+    jwt:
+      secret: test-only-jwt-secret-key-32-chars-long-for-hmac256-test-profile
+      expiration-seconds: 28800
+
+

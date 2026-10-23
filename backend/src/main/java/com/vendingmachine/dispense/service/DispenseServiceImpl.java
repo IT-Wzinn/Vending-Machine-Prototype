@@ -25,6 +25,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -44,6 +47,9 @@ public class DispenseServiceImpl implements DispenseService {
     private final DeviceEventRepository deviceEventRepository;
     private final DeviceAdapter deviceAdapter;
     private final ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    private ObjectProvider<DispenseService> dispenseServiceProvider;
 
     @Value("${app.dispense.command-timeout-seconds:45}")
     private int commandTimeoutSeconds;
@@ -70,13 +76,19 @@ public class DispenseServiceImpl implements DispenseService {
     @PostConstruct
     public void init() {
         if (deviceAdapter instanceof SimulatedDeviceAdapter simulated) {
-            simulated.setEventListener(this::handleDeviceEvent);
-            log.info("Registered DispenseService as listener to SimulatedDeviceAdapter");
+            simulated.setEventListener(event -> {
+                if (dispenseServiceProvider != null) {
+                    dispenseServiceProvider.getObject().handleDeviceEvent(event);
+                } else {
+                    handleDeviceEvent(event);
+                }
+            });
+            log.info("Registered DispenseService proxy listener to SimulatedDeviceAdapter");
         }
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public DispenseTriggerResponseDto triggerDispensing(UUID orderId) {
         if (orderId == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "OrderId cannot be null", HttpStatus.BAD_REQUEST);
@@ -300,20 +312,20 @@ public class DispenseServiceImpl implements DispenseService {
             }
 
             // Confirmed successful dispensing:
-            // 1. Order status -> COMPLETED
-            order.setStatus(OrderStatus.COMPLETED);
-            order.setCompletedAt(now);
-            order.setUpdatedAt(now);
-            orderRepository.save(order);
-
-            // 2. Command status -> COMPLETED
+            // 1. Command status -> COMPLETED
             command.setStatus("COMPLETED");
             command.setFinishedAt(now);
             dispenseCommandRepository.save(command);
 
-            // 3. Inventory consistency rule:
+            // 2. Inventory consistency rule:
             // Deduct stock_quantity and release reserved_quantity exactly once after confirmed successful dispensing.
             deductStockAndReleaseReservation(order);
+
+            // 3. Order status -> COMPLETED (saved together with reservationHeld status)
+            order.setStatus(OrderStatus.COMPLETED);
+            order.setCompletedAt(now);
+            order.setUpdatedAt(now);
+            orderRepository.save(order);
 
             log.info("Order {} COMPLETED. Physical stock deducted and reservation cleared. Verification: {}",
                     order.getId(), event.getVerificationLevel());
@@ -325,10 +337,6 @@ public class DispenseServiceImpl implements DispenseService {
                 return;
             }
 
-            order.setStatus(OrderStatus.DISPENSE_FAILED);
-            order.setUpdatedAt(now);
-            orderRepository.save(order);
-
             command.setStatus("FAILED");
             command.setFailureCode(event.getFailureCode());
             command.setFailureMessage(event.getFailureMessage());
@@ -337,6 +345,10 @@ public class DispenseServiceImpl implements DispenseService {
 
             // Confirmed failure: do NOT deduct stock_quantity. Release reserved_quantity back to available pool.
             releaseReservationWithoutStockDeduction(order);
+
+            order.setStatus(OrderStatus.DISPENSE_FAILED);
+            order.setUpdatedAt(now);
+            orderRepository.save(order);
 
             log.warn("Order {} marked as DISPENSE_FAILED. FailureCode: {}, Reason: {}. Reservation released.",
                     order.getId(), event.getFailureCode(), event.getFailureMessage());
@@ -363,30 +375,60 @@ public class DispenseServiceImpl implements DispenseService {
     private void deductStockAndReleaseReservation(Order order) {
         if (order.getProduct() == null) return;
         UUID productId = order.getProduct().getId();
-        Product product = productRepository.findByIdForUpdate(productId).orElse(null);
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseGet(() -> productRepository.findById(productId).orElse(null));
         if (product != null) {
             int qty = order.getQuantity() != null ? order.getQuantity() : 1;
-            int newStock = Math.max(0, product.getStockQuantity() - qty);
-            int newReserved = Math.max(0, product.getReservedQuantity() - qty);
-            product.setStockQuantity(newStock);
-            product.setReservedQuantity(newReserved);
+            
+            // 1. Release reservation if held
+            if (order.isReservationHeld()) {
+                if (product.getReservedQuantity() >= qty) {
+                    product.setReservedQuantity(product.getReservedQuantity() - qty);
+                } else {
+                    log.error("INVENTORY INCONSISTENCY: Product {} has reservedQuantity={} less than order quantity {}",
+                            product.getId(), product.getReservedQuantity(), qty);
+                    product.setReservedQuantity(0);
+                }
+                order.setReservationHeld(false);
+            }
+
+            // 2. Deduct physical stock
+            if (product.getStockQuantity() >= qty) {
+                product.setStockQuantity(product.getStockQuantity() - qty);
+            } else {
+                log.error("INVENTORY INCONSISTENCY: Product {} has stockQuantity={} less than order quantity {}",
+                        product.getId(), product.getStockQuantity(), qty);
+                product.setStockQuantity(0);
+            }
+
             productRepository.save(product);
             log.info("Product {} ({}) updated: stockQuantity={}, reservedQuantity={}",
-                    product.getId(), product.getName(), newStock, newReserved);
+                    product.getId(), product.getName(), product.getStockQuantity(), product.getReservedQuantity());
         }
     }
 
     private void releaseReservationWithoutStockDeduction(Order order) {
         if (order.getProduct() == null) return;
         UUID productId = order.getProduct().getId();
-        Product product = productRepository.findByIdForUpdate(productId).orElse(null);
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseGet(() -> productRepository.findById(productId).orElse(null));
         if (product != null) {
             int qty = order.getQuantity() != null ? order.getQuantity() : 1;
-            int newReserved = Math.max(0, product.getReservedQuantity() - qty);
-            product.setReservedQuantity(newReserved);
-            productRepository.save(product);
-            log.info("Released reservation for order {} without stock deduction (newReserved: {}, stockQuantity: {})",
-                    order.getId(), newReserved, product.getStockQuantity());
+            if (order.isReservationHeld()) {
+                if (product.getReservedQuantity() >= qty) {
+                    product.setReservedQuantity(product.getReservedQuantity() - qty);
+                } else {
+                    log.error("INVENTORY INCONSISTENCY: Product {} has reservedQuantity={} less than order quantity {}",
+                            product.getId(), product.getReservedQuantity(), qty);
+                    product.setReservedQuantity(0);
+                }
+                order.setReservationHeld(false);
+                productRepository.save(product);
+                log.info("Released reservation for order {} without stock deduction (newReserved: {}, stockQuantity: {})",
+                        order.getId(), product.getReservedQuantity(), product.getStockQuantity());
+            } else {
+                log.info("Order {} does not hold an active reservation; skipping release", order.getId());
+            }
         }
     }
 
