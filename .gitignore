@@ -13,6 +13,8 @@
 .env.test.local
 .env.production.local
 .env.production
+.env.render
+backend/.env.render
 *.env
 secrets/
 credentials/
