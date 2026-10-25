@@ -1,7 +1,6 @@
 target/
-.mvn/
-*.dump
 .git/
-.env
-.env.local
+.env*
+!.env*.example
+*.dump
 .vscode/

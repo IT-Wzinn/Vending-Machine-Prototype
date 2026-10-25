@@ -1,24 +1,20 @@
 # Multi-stage Dockerfile for Vending Machine Backend (Java 21 / Spring Boot 3.3.5)
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /workspace
 
-# Copy maven wrapper and project definition
-COPY .mvn .mvn
-COPY mvnw pom.xml ./
-RUN chmod +x ./mvnw
+# Copy pom.xml and pre-fetch dependencies for Docker layer caching
+COPY pom.xml .
+RUN mvn dependency:resolve -B
 
-# Cache dependencies
-RUN ./mvnw dependency:go-offline -B
-
-# Copy source code and build executable jar
+# Copy source code and build production executable JAR
 COPY src src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Minimal runtime stage
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Run as dedicated unprivileged user
+# Run as dedicated unprivileged user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
