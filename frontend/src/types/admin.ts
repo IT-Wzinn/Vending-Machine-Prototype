@@ -146,10 +146,12 @@ export interface ReconciliationDecisionResponse {
   publicOrderCode: string;
   action: string;
   previousStatus: OrderStatus;
-  newStatus: OrderStatus;
+  currentStatus: OrderStatus;
+  newStatus?: OrderStatus;
   reason: string;
   confirmationReference?: string;
   reservationReleased: boolean;
-  recordedAt: string;
+  processedAt: string;
+  recordedAt?: string;
   message: string;
 }

@@ -238,7 +238,7 @@ export const ReconciliationDecisionModal: React.FC<ReconciliationDecisionModalPr
                     <span className="font-bold">Duyệt xuất thủ công</span>
                   </div>
                   <p className="text-[11px] text-brand-text-muted font-normal">
-                    Hoàn tất đơn do nhân viên đã xử lý giao hàng
+                    Ghi nhận phê duyệt xuất bù, không đổi trạng thái đơn
                   </p>
                 </button>
 
@@ -260,7 +260,7 @@ export const ReconciliationDecisionModal: React.FC<ReconciliationDecisionModalPr
                     <span className="font-bold">Chờ hoàn tiền</span>
                   </div>
                   <p className="text-[11px] text-brand-text-muted font-normal">
-                    Hủy đơn, nhả giữ chỗ kho, chờ chuyển khoản lại
+                    Ghi nhận chờ hoàn tiền, bảo lưu giữ chỗ kho
                   </p>
                 </button>
 
@@ -306,9 +306,10 @@ export const ReconciliationDecisionModal: React.FC<ReconciliationDecisionModalPr
                 <div className="text-amber-900 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-bold">LƯU Ý NGHIỆP VỤ:</strong> Quyết định này chỉ ghi
-                    nhận đơn hàng ở trạng thái chờ hoàn tiền và giải phóng số lượng giữ chỗ kho. Thao
-                    tác này <strong>không được xem là đã hoàn tiền thành công</strong>.
+                    <strong className="font-bold">LƯU Ý NGHIỆP VỤ:</strong> Quyết định này ghi
+                    nhận đơn hàng ở trạng thái chờ xử lý hoàn tiền; giữ chỗ kho vẫn được bảo lưu an
+                    toàn (chỉ giải phóng khi xác nhận hoàn tiền REFUND_CONFIRMED). Thao tác này{' '}
+                    <strong>không được xem là đã hoàn tiền thành công</strong>.
                   </div>
                 </div>
               )}

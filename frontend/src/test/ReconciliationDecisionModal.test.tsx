@@ -152,9 +152,11 @@ describe('ReconciliationDecisionModal Component', () => {
       publicOrderCode: 'VM001-20261022-0001',
       action: 'MANUAL_DISPENSE_APPROVED',
       previousStatus: 'NEEDS_RECONCILIATION',
-      newStatus: 'COMPLETED',
+      currentStatus: 'NEEDS_RECONCILIATION',
+      newStatus: 'NEEDS_RECONCILIATION',
       reason: 'Kỹ thuật viên Nam đã giao trực tiếp lon nước cho khách tại máy.',
       reservationReleased: false,
+      processedAt: new Date().toISOString(),
       recordedAt: new Date().toISOString(),
       message: 'Decision recorded',
     });

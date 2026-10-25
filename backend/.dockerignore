@@ -1,0 +1,7 @@
+target/
+.mvn/
+*.dump
+.git/
+.env
+.env.local
+.vscode/
