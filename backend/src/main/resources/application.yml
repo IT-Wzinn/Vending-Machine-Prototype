@@ -44,6 +44,18 @@ app:
     default-id: ${MACHINE_ID:VM001}
   cors:
     allowed-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  mqtt:
+    enabled: ${MQTT_ENABLED:false}
+    broker-url: ${MQTT_BROKER_URL:ssl://localhost:8883}
+    client-id: ${MQTT_CLIENT_ID:backend-vending-001}
+    username: ${MQTT_USERNAME:}
+    password: ${MQTT_PASSWORD:}
+    machine-id: ${MQTT_MACHINE_ID:${app.machine.default-id:VM001}}
+    connection-timeout-seconds: ${MQTT_CONNECTION_TIMEOUT_SEC:30}
+    keep-alive-seconds: ${MQTT_KEEP_ALIVE_SEC:60}
+    clean-session: ${MQTT_CLEAN_SESSION:false}
+    heartbeat-timeout-seconds: ${MQTT_HEARTBEAT_TIMEOUT_SEC:120}
+    require-heartbeat-for-online: ${MQTT_REQUIRE_HEARTBEAT_FOR_ONLINE:true}
   order:
     expiration-minutes: ${ORDER_EXPIRATION_MINUTES:15}
     cleanup-interval-ms: ${ORDER_CLEANUP_INTERVAL_MS:60000}

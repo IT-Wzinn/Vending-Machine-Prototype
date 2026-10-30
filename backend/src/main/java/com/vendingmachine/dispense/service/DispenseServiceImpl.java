@@ -7,6 +7,7 @@ import com.vendingmachine.common.exception.ResourceNotFoundException;
 import com.vendingmachine.device.entity.DeviceEvent;
 import com.vendingmachine.device.repository.DeviceEventRepository;
 import com.vendingmachine.dispense.adapter.DeviceAdapter;
+import com.vendingmachine.dispense.adapter.mqtt.MqttDeviceAdapter;
 import com.vendingmachine.dispense.adapter.simulated.SimulatedDeviceAdapter;
 import com.vendingmachine.dispense.dto.*;
 import com.vendingmachine.dispense.entity.DispenseCommand;
@@ -84,6 +85,15 @@ public class DispenseServiceImpl implements DispenseService {
                 }
             });
             log.info("Registered DispenseService proxy listener to SimulatedDeviceAdapter");
+        } else if (deviceAdapter instanceof MqttDeviceAdapter mqtt) {
+            mqtt.setEventListener(event -> {
+                if (dispenseServiceProvider != null) {
+                    dispenseServiceProvider.getObject().handleDeviceEvent(event);
+                } else {
+                    handleDeviceEvent(event);
+                }
+            });
+            log.info("Registered DispenseService proxy listener to MqttDeviceAdapter");
         }
     }
 
