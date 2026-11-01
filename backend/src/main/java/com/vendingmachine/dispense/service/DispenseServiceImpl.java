@@ -227,10 +227,19 @@ public class DispenseServiceImpl implements DispenseService {
             return;
         }
 
-        // 1. Persist DeviceEvent into database for durable audit trail
+        // 1. Fetch associated DispenseCommand FIRST (Verify command exists before DB persist to prevent FK constraint violation)
+        DispenseCommand command = dispenseCommandRepository.findByCommandId(commandId).orElse(null);
+        if (command == null) {
+            log.warn("Device event {} refers to non-existent commandId {}. Skipping state transition and DB persist to avoid FK violation.",
+                    eventId, commandId);
+            sendAckAfterCommit(event);
+            return;
+        }
+
+        // 2. Persist DeviceEvent into database for durable audit trail (Safe because command exists)
         DeviceEvent deviceEvent = new DeviceEvent();
         deviceEvent.setEventId(eventId);
-        deviceEvent.setCommandId(commandId);
+        deviceEvent.setCommandId(command.getCommandId());
         deviceEvent.setEventType(eventType);
         deviceEvent.setSlotNumber(event.getSlotNumber());
 
@@ -245,14 +254,6 @@ public class DispenseServiceImpl implements DispenseService {
         }
         deviceEvent.setCreatedAt(Instant.now());
         deviceEventRepository.save(deviceEvent);
-
-        // 2. Fetch associated DispenseCommand
-        DispenseCommand command = dispenseCommandRepository.findByCommandId(commandId).orElse(null);
-        if (command == null) {
-            log.warn("Device event {} refers to non-existent commandId {}", eventId, commandId);
-            sendAckAfterCommit(event);
-            return;
-        }
 
         Order order = command.getOrder();
         if (order == null) {

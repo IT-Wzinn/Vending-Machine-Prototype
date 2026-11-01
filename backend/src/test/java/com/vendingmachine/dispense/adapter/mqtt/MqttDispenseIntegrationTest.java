@@ -350,4 +350,41 @@ public class MqttDispenseIntegrationTest {
             assertThat(payload).contains("\"slotNumber\":" + expectedSlots[i]);
         }
     }
+
+    @Test
+    @DisplayName("Inbound Event with Non-Existent Command: Skips DB persist, avoids FK violation, and successfully sends EVENT_ACK")
+    void testInboundEventWithNonExistentCommandSendsAckWithoutFkViolation() throws Exception {
+        UUID unknownCmdId = UUID.fromString("00000000-0000-0000-0000-999999999999");
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        long initialEventCount = deviceEventRepository.count();
+
+        DeviceEventMessage probeEvent = DeviceEventMessage.rejected(
+                eventId,
+                unknownCmdId,
+                "VM001",
+                UUID.fromString("00000000-0000-0000-0000-000000000000"),
+                1,
+                "TEST_PROBE_CONNECTION",
+                Instant.now()
+        );
+
+        String jsonPayload = objectMapper.writeValueAsString(probeEvent);
+        MqttMessage incomingMessage = new MqttMessage(jsonPayload.getBytes(StandardCharsets.UTF_8));
+
+        // Act: Deliver message through MQTT callback exactly as in production
+        mqttDeviceAdapter.messageArrived("vending/VM001/events", incomingMessage);
+
+        // Assert 1: No DB record saved in device_events to prevent FK constraint violation
+        assertThat(deviceEventRepository.count()).isEqualTo(initialEventCount);
+
+        // Assert 2: EVENT_ACK is still published to vending/VM001/events/ack
+        ArgumentCaptor<MqttMessage> ackCaptor = ArgumentCaptor.forClass(MqttMessage.class);
+        verify(mockMqttClient).publish(eq("vending/VM001/events/ack"), ackCaptor.capture());
+
+        String ackPayload = new String(ackCaptor.getValue().getPayload(), StandardCharsets.UTF_8);
+        assertThat(ackPayload).contains("\"eventId\":\"" + eventId + "\"");
+        assertThat(ackPayload).contains("\"commandId\":\"" + unknownCmdId + "\"");
+        assertThat(ackPayload).contains("\"status\":\"PROCESSED\"");
+    }
 }

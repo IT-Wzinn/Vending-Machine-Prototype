@@ -342,4 +342,28 @@ class DispenseServiceTest {
         // Bắt buộc gửi lại EVENT_ACK
         verify(deviceAdapter).sendEventAck(any());
     }
+
+    @Test
+    @DisplayName("Lệnh không tồn tại: Bỏ qua lưu DeviceEvent, không sửa Order/Product, nhưng vẫn gửi EVENT_ACK")
+    void handleDeviceEvent_nonExistentCommand_skipsDbSaveAndSendsAck() {
+        UUID unknownCmdId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+        DeviceEventMessage event = DeviceEventMessage.rejected(
+                eventId, unknownCmdId, "VM001", orderId, 1, "UNKNOWN_COMMAND", Instant.now()
+        );
+
+        when(deviceEventRepository.existsByEventId(eventId)).thenReturn(false);
+        when(dispenseCommandRepository.findByCommandId(unknownCmdId)).thenReturn(Optional.empty());
+
+        dispenseService.handleDeviceEvent(event);
+
+        // Đảm bảo tuyệt đối không lưu DeviceEvent vào DB (tránh vi phạm FK constraint)
+        verify(deviceEventRepository, never()).save(any());
+        // Không sửa Order, Product hoặc DispenseCommand
+        verify(orderRepository, never()).save(any());
+        verify(productRepository, never()).save(any());
+        verify(dispenseCommandRepository, never()).save(any());
+        // Vẫn gửi lại EVENT_ACK cho thiết bị
+        verify(deviceAdapter).sendEventAck(any());
+    }
 }
