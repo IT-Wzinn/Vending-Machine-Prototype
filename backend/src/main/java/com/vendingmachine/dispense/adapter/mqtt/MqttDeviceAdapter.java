@@ -110,15 +110,29 @@ public class MqttDeviceAdapter implements DeviceAdapter, MqttCallbackExtended {
     public void stop() {
         log.info("[MQTT ADAPTER] Shutting down MQTT Device Adapter");
         if (reconnectScheduler != null) {
-            reconnectScheduler.shutdownNow();
+            try {
+                reconnectScheduler.shutdownNow();
+            } catch (Exception e) {
+                log.warn("[MQTT ADAPTER] Error shutting down reconnectScheduler: {}", e.getMessage());
+            }
         }
 
-        if (mqttClient != null && mqttClient.isConnected()) {
+        if (mqttClient != null) {
             try {
-                mqttClient.disconnectForcibly(1000);
-                mqttClient.close();
+                if (mqttClient.isConnected()) {
+                    try {
+                        mqttClient.disconnectForcibly(1000);
+                    } catch (Exception e) {
+                        log.warn("[MQTT ADAPTER] Error during MQTT client disconnect: {}", e.getMessage());
+                    }
+                }
+                if (mqttClient instanceof MqttClient mc) {
+                    mc.close(true);
+                } else {
+                    mqttClient.close();
+                }
             } catch (Exception e) {
-                log.warn("[MQTT ADAPTER] Error during MQTT client disconnect: {}", e.getMessage());
+                log.warn("[MQTT ADAPTER] Error closing MQTT client: {}", e.getMessage());
             }
         }
     }
@@ -135,7 +149,8 @@ public class MqttDeviceAdapter implements DeviceAdapter, MqttCallbackExtended {
                     properties.getBrokerUrl(), options.isCleanSession());
             mqttClient.connect(options);
             log.info("[MQTT ADAPTER] Connected successfully to MQTT broker!");
-            subscribeTopics();
+            // Note: subscribeTopics() is invoked via MqttCallbackExtended.connectComplete(reconnect, serverURI)
+            // for both initial connect and automatic reconnects, preventing duplicate subscriptions.
         } catch (MqttException e) {
             log.warn("[MQTT ADAPTER] Initial connection to broker {} failed (ReasonCode: {}): {}. Background retry is active.",
                     properties.getBrokerUrl(), e.getReasonCode(), e.getMessage());
@@ -170,7 +185,7 @@ public class MqttDeviceAdapter implements DeviceAdapter, MqttCallbackExtended {
         return options;
     }
 
-    private void subscribeTopics() {
+    synchronized void subscribeTopics() {
         if (mqttClient == null || !mqttClient.isConnected()) {
             return;
         }
@@ -307,7 +322,13 @@ public class MqttDeviceAdapter implements DeviceAdapter, MqttCallbackExtended {
 
     @Override
     public void connectionLost(Throwable cause) {
-        log.warn("[MQTT ADAPTER] MQTT connection lost: {}", (cause != null ? cause.getMessage() : "Unknown reason"));
+        if (cause == null) {
+            log.warn("[MQTT ADAPTER] MQTT connection lost: Cause is null (server closed connection or unknown reason)");
+        } else if (cause instanceof MqttException me) {
+            log.warn("[MQTT ADAPTER] MQTT connection lost: ReasonCode={}, Message={}", me.getReasonCode(), me.getMessage());
+        } else {
+            log.warn("[MQTT ADAPTER] MQTT connection lost: Type={}, Message={}", cause.getClass().getSimpleName(), cause.getMessage());
+        }
     }
 
     @Override
