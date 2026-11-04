@@ -71,7 +71,7 @@ class DispenseControllerTest {
         UUID orderId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/dispense/orders/{orderId}/trigger", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
@@ -82,8 +82,8 @@ class DispenseControllerTest {
         UUID orderId = UUID.randomUUID();
 
         mockMvc.perform(post("/api/v1/dispense/orders/{orderId}/trigger", orderId)
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("CSRF_HEADER_MISSING"));
     }
@@ -94,12 +94,13 @@ class DispenseControllerTest {
         UUID orderId = UUID.randomUUID();
         UUID cmdId = UUID.randomUUID();
         when(dispenseService.triggerDispensing(orderId))
-                .thenReturn(new DispenseTriggerResponseDto(orderId, cmdId, "DISPENSING", "Lệnh xuất hàng đã được phát."));
+                .thenReturn(
+                        new DispenseTriggerResponseDto(orderId, cmdId, "DISPENSING", "Lệnh xuất hàng đã được phát."));
 
         mockMvc.perform(post("/api/v1/dispense/orders/{orderId}/trigger", orderId)
-                        .header("Authorization", "Bearer " + adminToken)
-                        .header("X-Requested-With", "XMLHttpRequest")
-                        .contentType(MediaType.APPLICATION_JSON))
+                .header("Authorization", "Bearer " + adminToken)
+                .header("X-Requested-With", "XMLHttpRequest")
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.orderId").value(orderId.toString()))
                 .andExpect(jsonPath("$.data.commandId").value(cmdId.toString()))
@@ -112,7 +113,7 @@ class DispenseControllerTest {
         UUID orderId = UUID.randomUUID();
 
         mockMvc.perform(get("/api/v1/dispense/orders/{orderId}/command", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
     }
@@ -134,8 +135,8 @@ class DispenseControllerTest {
         when(dispenseService.getDispenseCommandByOrderId(orderId)).thenReturn(dto);
 
         mockMvc.perform(get("/api/v1/dispense/orders/{orderId}/command", orderId)
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON))
+                .header("Authorization", "Bearer " + adminToken)
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.commandId").value(cmdId.toString()))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))

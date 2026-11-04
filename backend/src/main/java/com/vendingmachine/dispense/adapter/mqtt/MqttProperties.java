@@ -151,3 +151,4 @@ public class MqttProperties {
         this.requireHeartbeatForOnline = requireHeartbeatForOnline;
     }
 }
+

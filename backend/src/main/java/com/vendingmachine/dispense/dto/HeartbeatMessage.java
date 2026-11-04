@@ -86,3 +86,4 @@ public class HeartbeatMessage {
         this.timestamp = timestamp;
     }
 }
+

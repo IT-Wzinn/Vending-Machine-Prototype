@@ -213,3 +213,4 @@ class MqttDeviceAdapterTest {
         assertThat(recorded.getUptimeSeconds()).isEqualTo(7200L);
     }
 }
+
