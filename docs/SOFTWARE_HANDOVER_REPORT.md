@@ -235,3 +235,4 @@ Các commit mới nhất được kiểm tra và lưu vết:
    - Lắp đặt toàn bộ linh kiện vào thân tủ máy bán hàng vật lý.
    - Dán mã QR cố định dẫn tới URL Frontend Vercel lên mặt trước tủ kính.
    - Thực hiện chuỗi 10 đơn hàng mua thử liên tiếp với các sản phẩm khác nhau trên 3 khay hàng để nghiệm thu toàn diện hệ thống.
+

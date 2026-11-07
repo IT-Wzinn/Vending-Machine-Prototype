@@ -1,17 +1,19 @@
-# Frontend — Vending Machine Customer Interface
+# Frontend — Vending Machine Customer & Admin Interface
 
-Giao diện khách hàng cho hệ thống máy bán hàng tự động thông minh (Smart Vending Machine Prototype). Được thiết kế mobile-first, tối ưu hóa cho người dùng truy cập từ mã QR cố định dán trên thân máy, kết nối trực tiếp với backend Spring Boot.
+Giao diện người dùng cho hệ thống máy bán hàng tự động thông minh (**FreshVend / Vending Machine Prototype**), bao gồm:
+1. **Customer Mobile Web App:** Giao diện đặt hàng di động (mobile-first), tối ưu hóa cho người dùng quét mã QR cố định trên thân máy mà không cần cài đặt ứng dụng.
+2. **Admin Reconciliation Portal:** Cổng quản trị và đối soát đơn hàng an toàn, hỗ trợ tra cứu lịch sử sự kiện phần cứng và ra quyết định xử lý khiếu nại.
 
 ---
 
-## 1. Công nghệ sử dụng
+## 1. Công nghệ & Thư viện sử dụng
 
-- **Core:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Bundler & Dev Server:** [Vite](https://vite.dev/)
-- **Styling:** [Tailwind CSS v3](https://tailwindcss.com/)
+- **Core Framework:** [React 19.2.8](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+- **Bundler & Dev Server:** [Vite 8.3.4](https://vite.dev/)
+- **Styling & Design System:** [Tailwind CSS v3](https://tailwindcss.com/) + Glassmorphism UX
 - **Iconography:** [Lucide React](https://lucide.dev/)
-- **QR Code:** [qrcode.react](https://github.com/zpao/qrcode.react)
-- **Kiểm thử tự động:** [Vitest](https://vitest.dev/) + [Testing Library (React & DOM)](https://testing-library.com/)
+- **QR Code Engine:** [qrcode.react](https://github.com/zpao/qrcode.react) (sinh mã VietQR chuẩn NAPAS 247)
+- **Kiểm thử tự động:** [Vitest 5.0](https://vitest.dev/) + [Testing Library (React & DOM)](https://testing-library.com/) + JSDOM
 
 ---
 
@@ -20,48 +22,59 @@ Giao diện khách hàng cho hệ thống máy bán hàng tự động thông mi
 ```text
 frontend/
 ├── .env.example              # Mẫu cấu hình biến môi trường
-├── index.html                # HTML entrypoint (Google Fonts, SEO meta)
-├── package.json              # Quản lý dependencies & scripts
-├── postcss.config.js         # Cấu hình PostCSS cho Tailwind
-├── tailwind.config.js        # Hệ thống màu thương hiệu & design system
+├── index.html                # HTML entrypoint (Google Fonts, SEO & Viewport mobile)
+├── package.json              # Quản lý dependencies & scripts npm
+├── postcss.config.js         # Cấu hình PostCSS cho Tailwind CSS
+├── tailwind.config.js        # Design tokens, màu sắc và typography
 ├── tsconfig.json             # Cấu hình TypeScript root
 ├── tsconfig.app.json         # Cấu hình TypeScript cho client code
-├── vite.config.ts            # Cấu hình Vite & Vitest
+├── vite.config.ts            # Cấu hình Vite & Vitest environment
 └── src/
-    ├── App.tsx               # Root component tích hợp CartProvider
-    ├── index.css             # Tailwind base, utilities & glassmorphism
-    ├── main.tsx              # DOM root mount
+    ├── App.tsx               # Root component tích hợp Router và CartProvider
+    ├── index.css             # Tailwind base utilities & hiệu ứng giao diện
+    ├── main.tsx              # Entrypoint gắn DOM root
     ├── components/           # Các UI component tái sử dụng
-    │   ├── CartDrawer.tsx    # Ngăn trượt giỏ hàng, cập nhật số lượng, tính tổng
-    │   ├── CheckoutModal.tsx # Xác nhận đặt hàng & hiển thị thanh toán
-    │   ├── ErrorMessage.tsx  # Thông báo lỗi mạng hoặc lỗi API với nút thử lại
-    │   ├── LoadingSkeleton.tsx # Shimmer skeleton khi đang tải dữ liệu
-    │   ├── MachineBanner.tsx # Hiển thị tên máy, mã định danh và trạng thái
+    │   ├── CartDrawer.tsx    # Ngăn kéo giỏ hàng, cập nhật số lượng, tính tổng
+    │   ├── CheckoutModal.tsx # Xác nhận đặt hàng, hiển thị VietQR và polling trạng thái
+    │   ├── ErrorMessage.tsx  # Thông báo lỗi mạng kèm nút thử lại
+    │   ├── LoadingSkeleton.tsx # Hiệu ứng shimmer khi đang tải dữ liệu
+    │   ├── MachineBanner.tsx # Hiển thị tên máy, mã máy và trạng thái hoạt động
     │   ├── Navbar.tsx        # Thanh điều hướng trên cùng kèm huy hiệu giỏ hàng
-    │   ├── ProductCard.tsx   # Card sản phẩm (khay số, ảnh, giá VND, nút mua)
-    │   └── StatusBadge.tsx   # Badge trạng thái máy và số lượng tồn kho
+    │   ├── ProductCard.tsx   # Card sản phẩm (khay lò xo số, ảnh, giá VND, nút mua)
+    │   ├── ReconciliationDecisionModal.tsx # Modal ra quyết định đối soát (Admin)
+    │   └── StatusBadge.tsx   # Badge trạng thái máy, đơn hàng và tồn kho
     ├── context/
-    │   └── CartContext.tsx   # Quản lý giỏ hàng, tính tổng tiền VND, giới hạn tồn
+    │   └── CartContext.tsx   # Context giỏ hàng, tính tổng tiền VND, khóa số lượng
     ├── pages/
-    │   ├── CustomerOrderPage.tsx # Trang đặt hàng chính truy cập từ QR
-    │   └── InvalidMachinePage.tsx# Trang thông báo khi mã máy không hợp lệ/không tồn tại
+    │   ├── CustomerOrderPage.tsx            # Trang đặt hàng chính truy cập từ QR máy
+    │   ├── InvalidMachinePage.tsx           # Báo lỗi khi mã máy không tồn tại
+    │   ├── AdminLoginPage.tsx               # Trang đăng nhập quản trị viên
+    │   ├── ReconciliationDashboardPage.tsx  # Dashboard danh sách đơn hàng đối soát
+    │   └── ReconciliationOrderDetailPage.tsx# Chi tiết timeline đơn và log thiết bị
     ├── services/
-    │   ├── api.ts            # API client kết nối backend Spring Boot
-    │   └── mockData.ts       # Dữ liệu mock độc lập cho kiểm thử
-    ├── test/                 # Test suites tự động
+    │   ├── api.ts            # Client gọi REST API Backend Spring Boot
+    │   └── mockData.ts       # Dữ liệu mock phục vụ kiểm thử
+    ├── test/                 # Test suites tự động (11 test files, 55 test cases)
+    │   ├── AdminApiAndSecurity.test.ts
+    │   ├── AdminLogin.test.tsx
     │   ├── CartContext.test.tsx
+    │   ├── CheckoutModal.test.tsx
     │   ├── CustomerOrderPage.test.tsx
+    │   ├── formatters.test.ts
     │   ├── MachineBanner.test.tsx
     │   ├── ProductCard.test.tsx
-    │   ├── formatters.test.ts
-    │   └── setup.ts          # Setup jest-dom matchers
+    │   ├── ReconciliationDashboard.test.tsx
+    │   ├── ReconciliationDecisionModal.test.tsx
+    │   ├── ReconciliationOrderDetail.test.tsx
+    │   └── setup.ts          # Cấu hình Jest-DOM matchers cho Vitest
     ├── types/                # Type definitions chuẩn theo API contract
+    │   ├── admin.ts
     │   ├── api.ts
     │   ├── machine.ts
     │   ├── order.ts
     │   └── product.ts
     └── utils/
-        └── formatters.ts     # Định dạng tiền VND số nguyên (vd: 8.000 ₫)
+        └── formatters.ts     # Hàm format tiền tệ VND chuẩn (vd: 8.000 ₫)
 ```
 
 ---
@@ -76,11 +89,11 @@ cp .env.example .env
 
 Nội dung `.env`:
 ```env
-# Địa chỉ backend REST API
+# URL của Backend REST API
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-> **Quy tắc bảo mật:** Tuyệt đối không lưu secret, API key ngân hàng hoặc mật khẩu trong frontend.
+> **Lưu ý bảo mật:** File `.env` chứa cấu hình public cho client, tuyệt đối không khai báo secret key ngân hàng hay mật khẩu quản trị tại đây.
 
 ---
 
@@ -92,56 +105,57 @@ Di chuyển vào thư mục `frontend`:
 cd frontend
 ```
 
-### 4.1. Cài đặt dependencies
-
+### 4.1. Cài đặt thư viện phụ thuộc
 ```bash
 npm install
 ```
 
 ### 4.2. Chạy môi trường phát triển (Dev server)
-
 ```bash
 npm run dev
 ```
+Truy cập ứng dụng tại `http://localhost:5173`:
+- Trang đặt hàng máy `VM001`: `http://localhost:5173/machine/VM001` (hoặc `http://localhost:5173/?machineId=VM001`)
+- Trang đăng nhập quản trị: `http://localhost:5173/admin/login`
+- Dashboard đối soát: `http://localhost:5173/admin/reconciliation`
 
-Server sẽ khởi chạy tại: `http://localhost:5173`
-
-- Truy cập máy kiểm thử mặc định: `http://localhost:5173/machine/VM001`
-- Hoặc thông qua query param: `http://localhost:5173/?machineId=VM001`
-- Khi truy cập máy không tồn tại (vd: `/machine/VM999`), hệ thống sẽ hiển thị giao diện báo lỗi thân thiện.
-
-### 4.3. Chạy kiểm thử tự động (Unit & Integration tests)
-
+### 4.3. Chạy kiểm thử tự động
 ```bash
 npm test
 ```
+*Kết quả:* Chạy toàn bộ **55 test cases** trên **11 test files** kiểm thử toàn diện:
+- Format tiền tệ VND.
+- Giỏ hàng: thêm, cập nhật số lượng, chặn vượt quá tồn kho thực tế.
+- Card sản phẩm và Banner máy.
+- Quy trình tạo đơn, sinh mã VietQR và polling trạng thái đơn hàng.
+- Trang đăng nhập quản trị: xác thực username, password, xử lý token.
+- Dashboard đối soát: lọc danh sách đơn hàng, xem timeline chi tiết và mở modal ra quyết định đối soát.
 
-Chạy toàn bộ 19 test cases cho các luồng:
-- Kiểm tra tính hợp lệ của hàm format tiền tệ VND
-- Giỏ hàng: thêm sản phẩm, tăng/giảm số lượng, chặn vượt quá tồn kho, chặn sản phẩm hết hàng
-- Card sản phẩm: hiển thị khay lò xo, giá, trạng thái hết hàng và nút bấm
-- Banner máy: hiển thị thông tin máy và cảnh báo khi máy bảo trì/tạm ngưng
-- Trang đặt hàng: tải dữ liệu thành công, xử lý lỗi mất kết nối, xử lý mã máy không tồn tại, và quy trình thanh toán
-
-### 4.4. Build production
-
+### 4.4. Build đóng gói Production
 ```bash
 npm run build
 ```
-
-Kiểm tra TypeScript typecheck (`tsc -b`) và đóng gói tài nguyên vào thư mục `dist/`.
+Thực hiện kiểm tra kiểu dữ liệu TypeScript (`tsc -b`) và đóng gói tài nguyên tĩnh tối ưu hóa vào thư mục `dist/`.
 
 ---
 
-## 5. Tích hợp Backend và Phân định ranh giới Giai đoạn (Phase Boundary)
+## 5. Tích hợp Hệ thống & Luồng Nghiệp vụ Hoàn Chỉnh
 
-### 5.1. Các API Backend Phase 2 đã tích hợp thực tế
-- `GET /api/v1/machines/{machineId}`: Xác thực máy bán hàng tồn tại và đang `ACTIVE`.
-- `GET /api/v1/machines/{machineId}/products`: Lấy danh sách sản phẩm theo từng khay vật lý (Slot 1, 2, 3), kèm đơn giá VND, số lượng tồn kho và trạng thái sẵn sàng mua.
+Frontend đã được tích hợp 100% với Backend Spring Boot và hoạt động ổn định trên môi trường kiểm thử:
 
-### 5.2. Các chức năng thuộc Giai đoạn 4 & 5 (Chưa có Backend)
-- **Tạo đơn hàng & Lưu database:** API `POST /api/v1/orders` thuộc **Giai đoạn 4** (Claude phụ trách).
-- **Thanh toán chuyển khoản & Webhook:** Thuộc **Giai đoạn 5**.
-- **Điều khiển động cơ nhả hàng ESP32 & MQTT:** Thuộc **Giai đoạn 6 & 7**.
-
-Khi khách hàng bấm "Xác nhận đặt hàng", frontend gửi request đến `POST /api/v1/orders`. Nếu backend chưa triển khai endpoint này (trả về 404), frontend hiển thị thông báo rõ ràng về dependency của Phase 4 và **tuyệt đối không giả lập thanh toán thành công hay tự phát lệnh nhả hàng**.
+1. **Khách hàng quét mã QR trên thân máy:**
+   - Ứng dụng đọc `machineId` từ URL và gọi `GET /api/v1/machines/{machineId}` để xác minh máy còn hoạt động.
+   - Tải danh sách sản phẩm theo từng khay vật lý (Slot 1, Slot 2, Slot 3) qua `GET /api/v1/machines/{machineId}/products`.
+2. **Tạo đơn hàng & Khóa kho tạm thời:**
+   - Gửi yêu cầu `POST /api/v1/orders`. Backend xác nhận và giữ chỗ sản phẩm (`reserved_quantity`), trả về mã đơn và chuỗi nội dung chuyển khoản `transfer_reference`.
+3. **Thanh toán VietQR & Tự động cập nhật:**
+   - Ứng dụng sinh mã VietQR động chuẩn NAPAS 247 để khách quét thanh toán bằng mọi ứng dụng ngân hàng.
+   - Polling trạng thái đơn hàng `GET /api/v1/orders/{orderId}` mỗi 2 giây:
+     - `PAID` ➔ Hiển thị thông báo đã nhận thanh toán.
+     - `DISPENSING` ➔ Đang kích hoạt động cơ lò xo nhả hàng.
+     - `COMPLETED` ➔ Xuất hàng thành công, hiển thị lời cảm ơn.
+     - `NEEDS_RECONCILIATION` ➔ Thông báo kết quả cần đối soát an toàn cho khách hàng.
+4. **Cổng đối soát dành cho Quản trị viên:**
+   - Đăng nhập bảo mật JWT, tự động đính kèm header CSRF `X-Requested-With: XMLHttpRequest` cho mọi thao tác duyệt đơn.
+   - Xem chi tiết nhật ký sự kiện phần cứng ESP32 (`device_events`) để kiểm tra lý do kẹt motor hoặc timeout.
+   - Ra quyết định hoàn tiền (`REFUND`), nhả hàng lại (`DISPENSE_RETRY`) hoặc đánh dấu hoàn tất (`MARK_COMPLETED`).
