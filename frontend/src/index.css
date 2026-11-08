@@ -119,6 +119,60 @@
   background: rgba(18, 61, 50, 0.4);
 }
 
+/* Ambient Botanical Side Mist Animations (Hiệu ứng sương mù 2 bên - Nhẹ nhàng, êm dịu) */
+@keyframes mist-drift-left {
+  0% {
+    transform: translate3d(-5%, -4%, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(5%, 4%, 0) scale(1.06);
+    opacity: 0.68;
+  }
+  100% {
+    transform: translate3d(-2%, 6%, 0) scale(0.98);
+    opacity: 0.50;
+  }
+}
+
+@keyframes mist-drift-right {
+  0% {
+    transform: translate3d(5%, 5%, 0) scale(1);
+    opacity: 0.48;
+  }
+  50% {
+    transform: translate3d(-4%, -3%, 0) scale(1.07);
+    opacity: 0.70;
+  }
+  100% {
+    transform: translate3d(2%, -6%, 0) scale(0.98);
+    opacity: 0.52;
+  }
+}
+
+@keyframes mist-pulse-slow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.58;
+    transform: scale(1.04);
+  }
+}
+
+.animate-mist-left {
+  animation: mist-drift-left 18s ease-in-out infinite alternate;
+}
+
+.animate-mist-right {
+  animation: mist-drift-right 22s ease-in-out infinite alternate;
+}
+
+.animate-mist-slow {
+  animation: mist-pulse-slow 14s ease-in-out infinite alternate;
+}
+
 /* Accessibility: respect user preference for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

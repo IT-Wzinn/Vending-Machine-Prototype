@@ -106,7 +106,7 @@
     position:absolute; inset:0; z-index:3;
     width:100%; height:100%;
     pointer-events:none;
-    opacity:0; transition:opacity .7s var(--ease);
+    opacity:1; transition:opacity .7s var(--ease);
   }
   .is-ready #scene{ opacity:1; }
 
@@ -2540,10 +2540,10 @@
     window.addEventListener('resize', layout);
     clock = new THREE.Clock();
 
-    /* Hold the pulse for a page nobody is looking at: a background tab gets
-       no rAF, so the scan would never advance and the hero would still be
-       empty when it was finally opened. */
-    if (!REDUCED && !document.hidden) { uScanOn.value = 1; uScanR.value = 0; scanning = true; }
+    /* Always render living world immediately without blank delay */
+    uScanOn.value = 0;
+    uScanR.value = scanMax;
+    scanning = false;
 
     /* Paint once here rather than waiting on the loop. A tab that is opened
        in the background never gets a rAF, so the hero would sit empty until
@@ -3268,24 +3268,29 @@
     var A = narrow ? ARCH_N : ARCH, F = narrow ? FAR_N : FAR;
     /* wider than the stage: grow the roots to cover, pinned at a landmark */
     var cover = Math.max(1, W / s.width);
+    /* Scale factor to shrink roots so arch curve and background scenery are clearly visible matching mockup */
+    var BG_SCALE = narrow ? 0.68 : 0.64;
 
-    function place(group, box, pinFx, pinFy, z) {
+    function place(group, box, pinFx, pinFy, z, targetStageX, targetStageY) {
       var boxH = box.w / box.aspect;
-      var scale = box.w * u * cover / BOXW;
+      var scale = (box.w * u * cover / BOXW) * BG_SCALE;
       var k = (DIST - z) / DIST;                          /* undo the perspective shrink */
       var lx = (pinFx - 0.5) * BOXW, ly = (0.5 - pinFy) * (BOXW / box.aspect);
-      var px = wx(box.left + pinFx * box.w), py = wy(box.top + pinFy * boxH);
+
+      var px = targetStageX !== undefined ? (targetStageX * u - W / 2) : wx(box.left + pinFx * box.w);
+      var py = targetStageY !== undefined ? (H / 2 - targetStageY * u) : wy(box.top + pinFy * boxH);
+
       group.scale.setScalar(scale * k);
       group.position.set((px - lx * scale) * k, (py - ly * scale) * k, z);
-      return { x: px, y: py, s: scale, boxH: boxH * u * cover };
+      return { x: px, y: py, s: scale, boxH: boxH * u * cover * BG_SCALE };
     }
 
-    /* the near root pins at the arch's apex; the far one at its crest */
-    place(nearGroup, A, 0.732, 0.06, 0);
-    place(farGroup,  F, 0.410, 0.32, F.z);
+    /* Pin near arch apex in the center opening (between text & vending machine) */
+    var nearPlaced = place(nearGroup, A, 0.732, 0.06, 0, narrow ? 400 : 790, narrow ? 410 : 325);
+    place(farGroup,  F, 0.410, 0.32, F.z, narrow ? 340 : 660, narrow ? 430 : 350);
 
-    var aw = A.w * u * cover, ah = aw / A.aspect;
-    var cx = wx(A.left + 0.5 * A.w), cy = wy(A.top + 0.5 * (A.w / A.aspect));
+    var aw = A.w * u * cover * BG_SCALE, ah = aw / A.aspect;
+    var cx = nearPlaced.x, cy = nearPlaced.y;
 
     shadowMesh.scale.set(aw * 1.02, ah * 0.72, 1);
     shadowMesh.position.set(cx, cy - ah * 0.40, -70);
