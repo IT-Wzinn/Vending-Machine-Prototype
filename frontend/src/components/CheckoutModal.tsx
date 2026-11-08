@@ -117,17 +117,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
       <div className="min-h-full flex items-center justify-center p-4">
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="checkout-modal-title"
-          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-brand-border overflow-hidden transition-all my-8"
+          className="relative w-full max-w-lg glass-modal rounded-3xl shadow-2xl overflow-hidden transition-all my-8"
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-bg/40">
+          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-white/40 backdrop-blur-md">
             <h2 id="checkout-modal-title" className="font-bold text-lg text-brand-text">
               {getModalTitle()}
             </h2>
@@ -135,7 +135,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
               id="close-checkout-modal-btn"
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-brand-text-muted hover:text-brand-text hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-xl text-brand-text-muted hover:text-brand-text hover:bg-white/60 transition-colors"
               aria-label="Đóng cửa sổ"
             >
               <X className="w-5 h-5" />
@@ -173,7 +173,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-brand-bg border border-brand-border text-left space-y-2 text-xs">
+                    <div className="p-4 rounded-2xl glass-surface text-left space-y-2 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Mã đơn hàng:</span>
                         <span className="font-mono font-bold text-brand-primary">{order.publicOrderCode}</span>
@@ -184,12 +184,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Trạng thái:</span>
-                        <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                           order.status === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
                             : order.status === 'DISPENSING'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-blue-500/15 text-blue-800 border border-blue-500/30'
+                            : 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
                         }`}>
                           {order.status === 'COMPLETED'
                             ? 'HOÀN TẤT (COMPLETED)'
@@ -204,7 +204,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-primary-hover text-white text-xs sm:text-sm font-bold shadow-md transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all min-h-[44px]"
                       >
                         Hoàn tất / Đóng
                       </button>
@@ -225,14 +225,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 text-left space-y-2 text-xs">
+                    <div className="p-4 rounded-2xl glass-surface border-amber-300/40 text-left space-y-2 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Mã đơn hàng:</span>
                         <span className="font-mono font-bold text-brand-text">{order.publicOrderCode}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Trạng thái:</span>
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-400/30 font-bold text-[10px]">
                           HẾT HẠN (EXPIRED)
                         </span>
                       </div>
@@ -242,7 +242,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
                       >
                         Đóng cửa sổ
                       </button>
@@ -263,7 +263,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 text-left space-y-2 text-xs">
+                    <div className="p-4 rounded-2xl glass-surface border-purple-300/40 text-left space-y-2 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Mã đơn hàng:</span>
                         <span className="font-mono font-bold text-brand-text">{order.publicOrderCode}</span>
@@ -278,7 +278,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
                       >
                         Đóng cửa sổ
                       </button>
@@ -303,7 +303,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
                       >
                         Đóng cửa sổ
                       </button>
@@ -312,7 +312,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                 ) : (
                   /* PENDING_PAYMENT: QR CODE & POLLING INDICATOR */
                   <>
-                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                    <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-center backdrop-blur-xs">
                       <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-1">
                         Đơn hàng đã được tạo thành công
                       </span>
@@ -321,11 +321,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
 
                     {/* QR Code Presentation */}
                     {order.payment && order.payment.paymentQrData ? (
-                      <div className="flex flex-col items-center justify-center p-6 bg-brand-bg rounded-2xl border border-brand-border">
-                        <div className="p-3 bg-white rounded-xl shadow-xs border border-brand-border mb-3">
+                      <div className="flex flex-col items-center justify-center p-5 sm:p-6 glass-surface rounded-2xl">
+                        <div className="p-3.5 bg-white rounded-2xl shadow-sm border border-gray-200/80 mb-3">
                           <QRCodeSVG value={order.payment.paymentQrData} size={180} />
                         </div>
-                        <span className="text-xs text-brand-text-muted">Quét mã bằng ứng dụng Ngân hàng</span>
+                        <span className="text-xs font-medium text-brand-text-muted">Quét mã bằng ứng dụng Ngân hàng</span>
                         <div className="mt-3 text-center space-y-1">
                           <p className="text-xs font-semibold text-brand-text">
                             Ngân hàng: {order.payment.bankName} • {order.payment.bankAccountNumber}
@@ -341,14 +341,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     ) : null}
 
                     {/* Live Polling Status Indicator */}
-                    <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-brand-primary/5 border border-brand-primary/10 text-xs text-brand-primary">
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-brand-primary/10 border border-emerald-500/20 text-xs text-brand-primary font-medium backdrop-blur-xs">
                       <Loader2 className="w-4 h-4 animate-spin shrink-0 text-brand-primary" />
                       <span>Đang chờ tín hiệu thanh toán từ ngân hàng (tự động cập nhật mỗi 3s)...</span>
                     </div>
 
                     {/* Amount & Time limit */}
-                    <div className="flex justify-between items-center p-4 rounded-xl bg-gray-50 border border-gray-200 text-sm">
-                      <div className="flex items-center gap-2 text-brand-text-muted">
+                    <div className="flex justify-between items-center p-4 rounded-2xl glass-surface text-sm">
+                      <div className="flex items-center gap-2 text-brand-text-muted font-medium">
                         <Clock className="w-4 h-4 text-brand-primary" />
                         <span>Hạn thanh toán:</span>
                       </div>
@@ -363,7 +363,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-2.5 px-4 rounded-xl border border-gray-200 text-xs font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
                       >
                         Đóng / Quay lại sau
                       </button>
@@ -375,7 +375,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
               /* ORDER CONFIRMATION FLOW */
               <div className="space-y-5">
                 {/* MVP Prototype Notice */}
-                <div className="p-3.5 rounded-xl bg-brand-primary/5 border border-brand-primary/15 text-xs text-brand-primary flex items-start gap-2.5">
+                <div className="p-3.5 rounded-2xl bg-brand-primary/10 border border-emerald-500/20 text-xs text-brand-primary flex items-start gap-2.5 backdrop-blur-xs">
                   <Sparkles className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
                   <div className="leading-relaxed">
                     <span className="font-bold block">Giao thức nhả hàng vật lý (MVP)</span>
@@ -395,14 +395,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                           key={item.product.productId}
                           type="button"
                           onClick={() => setSelectedProductIndex(idx)}
-                          className={`w-full p-3 rounded-xl border text-left flex items-center justify-between text-xs transition-all ${
+                          className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between text-xs transition-all ${
                             selectedProductIndex === idx
-                              ? 'border-brand-primary bg-emerald-50/40 font-semibold'
-                              : 'border-brand-border bg-white text-brand-text-muted'
+                              ? 'border-brand-primary bg-emerald-500/15 font-semibold shadow-xs'
+                              : 'glass-surface text-brand-text-muted hover:border-emerald-500/30'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded-lg bg-brand-primary/10 text-brand-primary text-[10px] font-bold">
                               Khay 0{item.product.slotNumber}
                             </span>
                             <span>{item.product.name}</span>
@@ -418,7 +418,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
 
                 {/* Selected Item Detail */}
                 {currentItem && (
-                  <div className="p-4 rounded-2xl bg-brand-bg border border-brand-border space-y-3">
+                  <div className="p-4 rounded-2xl glass-surface space-y-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-brand-text-muted">Mã máy bán hàng:</span>
                       <span className="font-mono font-bold text-brand-primary">{machineId}</span>
@@ -435,9 +435,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <span className="text-brand-text-muted">Số lượng đơn hàng:</span>
                       <span className="font-semibold text-brand-text">1 sản phẩm</span>
                     </div>
-                    <div className="pt-2 border-t border-brand-border flex justify-between items-center">
+                    <div className="pt-2 border-t border-emerald-500/15 flex justify-between items-center">
                       <span className="text-sm font-bold text-brand-text">Tổng tiền thanh toán:</span>
-                      <span className="text-xl font-extrabold text-brand-primary">
+                      <span className="text-xl font-black text-brand-primary">
                         {formatVnd(currentItem.product.priceVnd)}
                       </span>
                     </div>
@@ -450,8 +450,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     id="checkout-error-notice"
                     className={`p-4 rounded-2xl text-xs space-y-1.5 border ${
                       errorNotice.isPhase4Dependency
-                        ? 'bg-amber-50 border-amber-200 text-amber-900'
-                        : 'bg-rose-50 border-rose-200 text-rose-900'
+                        ? 'bg-amber-500/15 border-amber-400/30 text-amber-900 backdrop-blur-xs'
+                        : 'bg-rose-500/15 border-rose-400/30 text-rose-900 backdrop-blur-xs'
                     }`}
                   >
                     <div className="flex items-center gap-2 font-bold">
@@ -468,7 +468,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     </div>
                     <p className="leading-relaxed">{errorNotice.message}</p>
                     {errorNotice.isPhase4Dependency && (
-                      <div className="mt-2 pt-2 border-t border-amber-200/80 text-[11px] text-amber-800">
+                      <div className="mt-2 pt-2 border-t border-amber-300/40 text-[11px] text-amber-800">
                         <strong>Quy ước bảo mật Phase 3:</strong> Frontend không tự giả mạo giao dịch thanh toán thành công khi backend chưa hỗ trợ. Giao diện order đã hoàn thành sẵn sàng kết nối API `POST /api/v1/orders`.
                       </div>
                     )}
@@ -480,7 +480,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-xs sm:text-sm font-semibold text-brand-text hover:bg-gray-50 transition-colors"
+                    className="flex-1 py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
                   >
                     Quay lại chọn món
                   </button>
@@ -489,7 +489,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     type="button"
                     disabled={loading || !currentItem}
                     onClick={handleCreateOrder}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md transition-all duration-150 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all duration-150 disabled:bg-gray-300/60 disabled:cursor-not-allowed min-h-[44px]"
                   >
                     {loading ? (
                       <>

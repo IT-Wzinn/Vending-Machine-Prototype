@@ -132,7 +132,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
         {loading ? (
           <div>
             {/* Banner skeleton */}
-            <div className="w-full h-32 bg-white rounded-2xl border border-brand-border animate-pulse mb-6" />
+            <div className="w-full h-32 glass-card rounded-3xl animate-pulse mb-6 border border-emerald-500/15" />
             {/* Catalog skeleton */}
             <CatalogSkeleton />
           </div>
@@ -158,7 +158,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
                 type="button"
                 onClick={loadMachineData}
                 aria-label="Làm mới tồn kho"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-border/80 bg-white/90 hover:bg-white text-xs font-bold text-brand-primary transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-500/20 bg-white/75 hover:bg-white text-xs font-bold text-brand-primary transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer backdrop-blur-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-brand-primary" />
                 <span className="hidden sm:inline">Cập nhật tồn kho</span>

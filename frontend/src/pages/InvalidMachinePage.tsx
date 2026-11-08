@@ -23,8 +23,8 @@ export const InvalidMachinePage: React.FC<InvalidMachinePageProps> = ({
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-brand-border p-6 sm:p-8 text-center shadow-card">
-        <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-100">
+      <div className="w-full max-w-md glass-card rounded-3xl border border-emerald-500/20 p-6 sm:p-8 text-center shadow-card">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/15 text-amber-700 flex items-center justify-center mx-auto mb-4 border border-amber-400/30 backdrop-blur-xs">
           <QrCode className="w-8 h-8" />
         </div>
 
@@ -32,7 +32,7 @@ export const InvalidMachinePage: React.FC<InvalidMachinePageProps> = ({
           Không tìm thấy máy bán hàng
         </h1>
 
-        <p className="text-xs sm:text-sm text-brand-text-muted leading-relaxed mb-6">
+        <p className="text-xs sm:text-sm text-brand-text-muted leading-relaxed mb-6 font-medium">
           {errorMessage ||
             `Mã máy "${currentMachineId || 'không xác định'}" không tồn tại trên hệ thống hoặc đang tạm ngừng dịch vụ. Quý khách vui lòng quét lại mã QR dán trên thân máy.`}
         </p>
@@ -49,11 +49,11 @@ export const InvalidMachinePage: React.FC<InvalidMachinePageProps> = ({
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
               placeholder="Nhập mã máy (VM001)..."
-              className="flex-1 px-4 py-2.5 rounded-xl border border-brand-border text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
+              className="flex-1 px-4 py-2.5 rounded-2xl glass-surface text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary min-h-[44px]"
             />
             <button
               type="submit"
-              className="px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white font-semibold text-sm transition-all"
+              className="px-5 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white font-semibold text-sm shadow-md border border-emerald-400/20 transition-all min-h-[44px]"
             >
               Kiểm tra
             </button>

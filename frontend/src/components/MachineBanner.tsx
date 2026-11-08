@@ -15,9 +15,9 @@ export const MachineBanner: React.FC<MachineBannerProps> = ({ machine }) => {
       {/* Subtle organic light accent */}
       <div
         aria-hidden="true"
-        className="absolute -top-10 -right-10 w-44 h-44 rounded-full pointer-events-none"
+        className="absolute -top-12 -right-12 w-52 h-52 rounded-full pointer-events-none blur-xl"
         style={{
-          background: 'radial-gradient(circle, rgba(216,243,106,0.18) 0%, rgba(18,61,50,0) 70%)',
+          background: 'radial-gradient(circle, rgba(216,243,106,0.22) 0%, rgba(34,197,94,0.12) 45%, rgba(18,61,50,0) 75%)',
         }}
       />
 
@@ -39,8 +39,8 @@ export const MachineBanner: React.FC<MachineBannerProps> = ({ machine }) => {
         </div>
 
         {/* Quick status box */}
-        <div className="flex items-center gap-3 p-3.5 rounded-2xl glass-pill text-xs text-brand-text shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-brand-primary/10 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl glass-surface text-xs text-brand-text shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-emerald-500/15 flex items-center justify-center shrink-0">
             <Info className="w-4 h-4 text-brand-primary" />
           </div>
           <div className="leading-relaxed">

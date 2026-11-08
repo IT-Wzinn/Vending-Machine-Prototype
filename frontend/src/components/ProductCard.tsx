@@ -43,15 +43,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
   return (
     <div
       id={`product-card-${product.slotNumber}`}
-      className={`group relative glass-card rounded-3xl transition-all duration-200 overflow-hidden flex flex-col justify-between ${
+      className={`group relative glass-card rounded-3xl transition-all duration-300 overflow-hidden flex flex-col justify-between ${
         isBuyable
           ? 'glass-card-hover'
-          : 'opacity-75 bg-white/60'
+          : 'opacity-70 bg-white/40 backdrop-blur-md'
       }`}
     >
       {/* Top badges: Slot and Stock */}
       <div className="p-4 pb-0 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-extrabold tracking-wider uppercase bg-brand-primary/10 text-brand-primary border border-brand-primary/15">
+        <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-extrabold tracking-wider uppercase bg-brand-primary/10 text-brand-primary border border-emerald-500/20 backdrop-blur-xs">
           Khay 0{product.slotNumber}
         </span>
         <StockBadge stockQuantity={product.stockQuantity} available={product.available} />
@@ -60,18 +60,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
       {/* Product Image / Illustration */}
       <div className="px-4 py-3 flex items-center justify-center">
         <div
-          className={`w-full h-40 rounded-2xl flex items-center justify-center bg-gradient-to-br ${colorClass} border border-brand-border/40 relative overflow-hidden`}
+          className={`w-full h-40 rounded-2xl flex items-center justify-center bg-gradient-to-br ${colorClass} border border-emerald-500/15 relative overflow-hidden backdrop-blur-xs shadow-inner`}
         >
+          {/* Subtle top inner reflection */}
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
           {imageSrc && !imageError ? (
             <img
               src={imageSrc}
               alt={product.name}
               onError={() => setImageError(true)}
-              className="w-full h-full object-contain p-2.5 transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"
+              className="w-full h-full object-contain p-2.5 transition-transform duration-300 group-hover:scale-105 drop-shadow-sm relative z-10"
               loading="lazy"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-center">
+            <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-center relative z-10">
               <Package className="w-12 h-12 text-brand-primary/40 stroke-1" />
               <span className="text-[11px] font-semibold text-brand-text-muted">Hình minh họa mẫu</span>
             </div>
@@ -95,7 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
         </div>
 
         {/* Price & Action */}
-        <div className="pt-3 border-t border-brand-border/60 flex items-center justify-between gap-2">
+        <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-brand-text-muted block">Đơn giá</span>
             <span className="text-xl sm:text-2xl font-black text-brand-primary tracking-tight font-sans">
@@ -110,8 +112,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
             onClick={handleAddToCart}
             className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm min-h-[44px] min-w-[108px] transition-all duration-150 ${
               isBuyable
-                ? 'bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating cursor-pointer'
-                : 'bg-gray-200/80 text-gray-400 cursor-not-allowed border border-gray-300/40'
+                ? 'bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating border border-emerald-400/25 cursor-pointer'
+                : 'bg-gray-200/60 text-gray-400 cursor-not-allowed border border-gray-300/40 backdrop-blur-xs'
             }`}
           >
             {feedback ? (

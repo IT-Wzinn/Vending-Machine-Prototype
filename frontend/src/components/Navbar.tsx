@@ -16,17 +16,17 @@ export const Navbar: React.FC<NavbarProps> = ({ machine }) => {
       <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
         {/* Brand identity */}
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-brand-primary flex items-center justify-center text-brand-accent shadow-sm border border-brand-primary/20">
+          <div className="w-10 h-10 rounded-2xl bg-brand-primary flex items-center justify-center text-brand-accent shadow-sm border border-emerald-400/25">
             <Store className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-lg text-brand-primary tracking-tight">Smart Vending</span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-accent/25 text-brand-primary border border-brand-accent/40 shadow-2xs">
-                <Sparkles className="w-2.5 h-2.5" /> Prototype
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-accent/25 text-brand-primary border border-brand-accent/40 shadow-2xs">
+                <Sparkles className="w-2.5 h-2.5 text-brand-primary" /> Prototype
               </span>
             </div>
-            <p className="text-xs text-brand-text-muted hidden sm:block">Máy bán hàng tự động thông minh</p>
+            <p className="text-xs text-brand-text-muted hidden sm:block font-medium">Máy bán hàng tự động thông minh</p>
           </div>
         </div>
 
@@ -49,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({ machine }) => {
             type="button"
             onClick={() => setIsCartOpen(true)}
             aria-label="Xem giỏ hàng"
-            className="relative flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating transition-all duration-150 min-h-[44px]"
+            className="relative flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating transition-all duration-150 min-h-[44px] border border-emerald-400/20"
           >
             <div className="relative">
               <ShoppingBag className="w-5 h-5 text-brand-accent" />
