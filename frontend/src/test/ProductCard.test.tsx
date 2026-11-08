@@ -68,6 +68,22 @@ describe('ProductCard', () => {
     expect(button).toBeDisabled();
   });
 
+  it('renders correct product image and falls back to placeholder on load error', () => {
+    render(
+      <CartProvider>
+        <ProductCard product={inStockProduct} />
+      </CartProvider>
+    );
+
+    const image = screen.getByRole('img', { name: 'Nước suối Aqua 500ml' });
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveAttribute('src', '/images/products/aquafina.png');
+
+    // Trigger image error to test fallback
+    fireEvent.error(image);
+    expect(screen.getByText('Hình minh họa mẫu')).toBeInTheDocument();
+  });
+
   it('provides feedback when product is added to cart', () => {
     render(
       <CartProvider>

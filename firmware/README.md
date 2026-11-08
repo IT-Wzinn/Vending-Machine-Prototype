@@ -28,8 +28,8 @@ Motor  Motor  Motor        (Xác định điểm dừng)     (Nâng cấp lên S
 - **Slot 3:** Động cơ lò xo khay Kẹo cao su Doublemint (tải trọng $\approx 30\text{g}$).
 
 > **Hình ảnh tham khảo thiết kế:**
-> - Bản vẽ thiết kế cơ khí và bố trí khoang tủ: [Banvethietke.png](../Banvethietke.png)
-> - Sơ đồ chân và vi điều khiển ESP32: [ESO32C3.png](../ESO32C3.png)
+> - Bản vẽ thiết kế cơ khí và bố trí khoang tủ: [ban-ve-thiet-ke.png](../docs/images/ban-ve-thiet-ke.png)
+> - Sơ đồ chân và vi điều khiển ESP32: [esp32-c3.png](../docs/images/esp32-c3.png)
 
 ---
 

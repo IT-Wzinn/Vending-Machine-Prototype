@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Check, AlertCircle, Package } from 'lucide-react';
 import type { Product } from '../types/product';
 import { formatVnd } from '../utils/formatters';
+import { resolveProductImage } from '../utils/productImages';
 import { StockBadge } from './StatusBadge';
 import { useCart } from '../context/CartContext';
 
@@ -16,6 +17,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const isBuyable = machineActive && product.available && product.stockQuantity > 0;
+  const imageSrc = resolveProductImage(product);
 
   const handleAddToCart = () => {
     if (!isBuyable) return;
@@ -60,9 +62,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
         <div
           className={`w-full h-40 rounded-2xl flex items-center justify-center bg-gradient-to-br ${colorClass} border border-brand-border/40 relative overflow-hidden`}
         >
-          {product.imageUrl && !imageError ? (
+          {imageSrc && !imageError ? (
             <img
-              src={product.imageUrl}
+              src={imageSrc}
               alt={product.name}
               onError={() => setImageError(true)}
               className="w-full h-full object-contain p-2.5 transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"

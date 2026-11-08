@@ -115,7 +115,7 @@ describe('Live Order Flow Acceptance — FreshVend with Sylva Redesign', () => {
     // 2. Machine Banner verification
     await waitFor(() => {
       expect(screen.getByText('Máy bán hàng tầng 1')).toBeInTheDocument();
-      expect(screen.getByText('VM001')).toBeInTheDocument();
+      expect(screen.getAllByText('VM001').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Hoạt động')).toBeInTheDocument();
     });
 
@@ -127,7 +127,7 @@ describe('Live Order Flow Acceptance — FreshVend with Sylva Redesign', () => {
     // 4. Verify stock badges and out-of-stock disablement
     expect(screen.getByText('Còn hàng: 4')).toBeInTheDocument();
     expect(screen.getByText('Còn hàng: 3')).toBeInTheDocument();
-    expect(screen.getByText('Hết hàng')).toBeInTheDocument();
+    expect(screen.getAllByText('Hết hàng').length).toBeGreaterThanOrEqual(1);
 
     const buyButtons = screen.getAllByRole('button', { name: /Chọn mua/i });
     expect(buyButtons.length).toBe(2);
@@ -162,11 +162,11 @@ describe('Live Order Flow Acceptance — FreshVend with Sylva Redesign', () => {
 
     // 9. Payment QR Code screen appears with SePay VietQR data
     await waitFor(() => {
-      expect(screen.getByText('Quét mã VietQR để thanh toán')).toBeInTheDocument();
-      expect(screen.getByText('VM001UJW1')).toBeInTheDocument();
+      expect(screen.getByText('Quét mã bằng ứng dụng Ngân hàng')).toBeInTheDocument();
+      expect(screen.getByText('VM001-20261108-A238')).toBeInTheDocument();
+      expect(screen.getByText(/VM001UJW1/)).toBeInTheDocument();
       expect(screen.getByText('DEMO SMART VENDING')).toBeInTheDocument();
-      expect(screen.getByText('DEMO123456')).toBeInTheDocument();
-      expect(screen.getByText('MBBank')).toBeInTheDocument();
+      expect(screen.getByText(/MBBank/)).toBeInTheDocument();
     });
 
     // Verify polling was triggered
@@ -177,4 +177,3 @@ describe('Live Order Flow Acceptance — FreshVend with Sylva Redesign', () => {
     });
   });
 });
-

@@ -58,7 +58,7 @@ Dự án FreshVend đã hoàn thiện bản vẽ thiết kế kết cấu khung 
 Cơ cấu thùng máy được thiết kế 3 khay hàng độc lập dạng lò xo xoắn (Spiral Coil), tối ưu cho nhiều nhóm sản phẩm từ đồ uống đóng chai (chai nước Aquafina 500ml nặng $\approx 500\text{g}$) đến các gói bánh snack và kẹo nhẹ:
 
 <div align="center">
-  <img src="./Banvethietke.png" alt="Bản vẽ thiết kế cơ khí và kết cấu tủ máy FreshVend" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+  <img src="docs/images/ban-ve-thiet-ke.png" alt="Bản vẽ thiết kế cơ khí và kết cấu tủ máy FreshVend" width="90%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
   <p><i>Hình 1: Bản vẽ chi tiết kết cấu thùng máy, hệ thống khay lò xo 3 slot và máng rơi sản phẩm FreshVend.</i></p>
 </div>
 
@@ -73,7 +73,7 @@ Cơ cấu thùng máy được thiết kế 3 khay hàng độc lập dạng lò
 Vi điều khiển **ESP32** (tương thích các dòng ESP32-WROOM-32D, ESP32-C3) đóng vai trò điều khiển trung tâm tại biên:
 
 <div align="center">
-  <img src="./ESO32C3.png" alt="Sơ đồ mạch điều khiển và vi điều khiển ESP32" width="75%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+  <img src="docs/images/esp32-c3.png" alt="Sơ đồ mạch điều khiển và vi điều khiển ESP32" width="75%" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
   <p><i>Hình 2: Sơ đồ vi điều khiển ESP32, mạch công suất cách ly quang và các ngõ giao tiếp ngoại vi.</i></p>
 </div>
 
@@ -163,8 +163,6 @@ Vi điều khiển **ESP32** (tương thích các dòng ESP32-WROOM-32D, ESP32-C
 
 ```text
 Vending Machine Prototype/
-├── Banvethietke.png              # Bản vẽ thiết kế cơ khí và kết cấu tủ máy FreshVend
-├── ESO32C3.png                   # Sơ đồ vi điều khiển ESP32 và mạch điều khiển
 ├── README.md                     # Tài liệu tổng quan dự án này
 ├── PRODUCT_SPEC.md               # Đặc tả kỹ thuật và yêu cầu sản phẩm chính thức
 ├── IMPLEMENTATION_PLAN.md        # Lộ trình triển khai hệ thống
@@ -172,6 +170,9 @@ Vending Machine Prototype/
 ├── .gitignore                    # Danh sách các tệp và thư mục bị loại trừ khỏi Git
 │
 ├── docs/                         # Thư viện tài liệu kỹ thuật & hợp đồng giao tiếp
+│   ├── images/                   # Hình ảnh bản vẽ và sơ đồ kỹ thuật
+│   │   ├── ban-ve-thiet-ke.png   # Bản vẽ thiết kế cơ khí và kết cấu tủ máy FreshVend
+│   │   └── esp32-c3.png          # Sơ đồ vi điều khiển ESP32 và mạch điều khiển
 │   ├── API_CONTRACT.md           # Hợp đồng REST API chuẩn giữa Frontend và Backend
 │   ├── MQTT_CONTRACT.md          # Hợp đồng giao tiếp MQTTS giữa Backend và ESP32
 │   ├── DEPLOYMENT.md             # Hướng dẫn triển khai hạ tầng Cloud (Vercel, Render, Neon)
