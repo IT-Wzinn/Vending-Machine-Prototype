@@ -197,4 +197,179 @@ describe('CheckoutModal Component', () => {
 
     expect(screen.getByText('Giao dịch cần đối soát')).toBeInTheDocument();
   });
+
+  it('displays DISPENSING view with Smart Dispense Terminal steps when backend transitions to DISPENSING', async () => {
+    vi.mocked(api.createOrder).mockResolvedValueOnce(sampleOrder);
+    vi.mocked(api.getOrderStatus).mockResolvedValueOnce({
+      orderId: 'ord-abc-123',
+      status: 'DISPENSING',
+      updatedAt: '2026-10-19T10:02:00Z',
+      message: 'Đang gửi lệnh nhả hàng tới ESP32...',
+    });
+
+    render(
+      <CartProvider>
+        <CartSetup>
+          <CheckoutModal machineId="VM001" isOpen={true} onClose={vi.fn()} />
+        </CartSetup>
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('add-btn'));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đặt hàng/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('VM001-20261019-A1B2')).toBeInTheDocument();
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('payment-success-view')).toBeInTheDocument();
+      },
+      { timeout: 4000 }
+    );
+
+    expect(screen.getByText('Máy đang thực hiện nhả hàng...')).toBeInTheDocument();
+    expect(screen.getByText('ĐANG NHẢ HÀNG')).toBeInTheDocument();
+    expect(screen.getByText('3. Động cơ quay lò xo')).toBeInTheDocument();
+    expect(screen.getByText('ĐANG QUAY...')).toBeInTheDocument();
+  });
+
+  it('displays COMPLETED view with pickup instructions when backend transitions to COMPLETED', async () => {
+    vi.mocked(api.createOrder).mockResolvedValueOnce(sampleOrder);
+    vi.mocked(api.getOrderStatus).mockResolvedValueOnce({
+      orderId: 'ord-abc-123',
+      status: 'COMPLETED',
+      updatedAt: '2026-10-19T10:03:00Z',
+      message: 'Xuất hàng hoàn tất.',
+    });
+
+    render(
+      <CartProvider>
+        <CartSetup>
+          <CheckoutModal machineId="VM001" isOpen={true} onClose={vi.fn()} />
+        </CartSetup>
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('add-btn'));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đặt hàng/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('VM001-20261019-A1B2')).toBeInTheDocument();
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('payment-success-view')).toBeInTheDocument();
+      },
+      { timeout: 4000 }
+    );
+
+    expect(screen.getByText('Đã xuất hàng thành công!')).toBeInTheDocument();
+    expect(screen.getByText('HOÀN TẤT (COMPLETED)')).toBeInTheDocument();
+    expect(screen.getByText(/Sản phẩm đã được đưa ra khay nhận hàng bên dưới/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lấy hàng & Đóng cửa sổ/i })).toBeInTheDocument();
+  });
+
+  it('displays DISPENSE_FAILED view with operator support instructions when backend reports failure', async () => {
+    vi.mocked(api.createOrder).mockResolvedValueOnce(sampleOrder);
+    vi.mocked(api.getOrderStatus).mockResolvedValueOnce({
+      orderId: 'ord-abc-123',
+      status: 'DISPENSE_FAILED',
+      updatedAt: '2026-10-19T10:04:00Z',
+      message: 'Động cơ kẹt không thể đẩy sản phẩm.',
+    });
+
+    render(
+      <CartProvider>
+        <CartSetup>
+          <CheckoutModal machineId="VM001" isOpen={true} onClose={vi.fn()} />
+        </CartSetup>
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('add-btn'));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đặt hàng/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('VM001-20261019-A1B2')).toBeInTheDocument();
+    });
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('payment-dispense-failed-view')).toBeInTheDocument();
+      },
+      { timeout: 4000 }
+    );
+
+    expect(screen.getByText('Sự cố khi xuất hàng')).toBeInTheDocument();
+    expect(screen.getByText(/Máy gặp sự cố cơ cấu khi đẩy sản phẩm/i)).toBeInTheDocument();
+  });
+
+  it('allows copying bank account number and transfer reference to clipboard', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    vi.mocked(api.createOrder).mockResolvedValueOnce(sampleOrder);
+
+    render(
+      <CartProvider>
+        <CartSetup>
+          <CheckoutModal machineId="VM001" isOpen={true} onClose={vi.fn()} />
+        </CartSetup>
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('add-btn'));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đặt hàng/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('VM001-20261019-A1B2')).toBeInTheDocument();
+    });
+
+    // Copy STK
+    const copyAccBtn = screen.getByRole('button', { name: /Sao chép số tài khoản/i });
+    fireEvent.click(copyAccBtn);
+    expect(writeTextMock).toHaveBeenCalledWith('0345678999');
+
+    // Copy Nội dung CK
+    const copyRefBtn = screen.getByRole('button', { name: /Sao chép nội dung chuyển khoản/i });
+    fireEvent.click(copyRefBtn);
+    expect(writeTextMock).toHaveBeenCalledWith('VM001A1B2');
+  });
+
+  it('never marks order as COMPLETED via local timer when backend remains in PENDING_PAYMENT', async () => {
+    vi.mocked(api.createOrder).mockResolvedValueOnce(sampleOrder);
+    vi.mocked(api.getOrderStatus).mockResolvedValue({
+      orderId: 'ord-abc-123',
+      status: 'PENDING_PAYMENT',
+      updatedAt: '2026-10-19T10:05:00Z',
+      message: 'Vẫn đang chờ thanh toán.',
+    });
+
+    render(
+      <CartProvider>
+        <CartSetup>
+          <CheckoutModal machineId="VM001" isOpen={true} onClose={vi.fn()} />
+        </CartSetup>
+      </CartProvider>
+    );
+
+    fireEvent.click(screen.getByTestId('add-btn'));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đặt hàng/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('VM001-20261019-A1B2')).toBeInTheDocument();
+    });
+
+    // Verify it stays in PENDING_PAYMENT and does not fake completion
+    expect(screen.getByText(/Đang chờ tín hiệu thanh toán từ ngân hàng/)).toBeInTheDocument();
+    expect(screen.queryByText('Đã xuất hàng thành công!')).not.toBeInTheDocument();
+    expect(screen.queryByText('HOÀN TẤT (COMPLETED)')).not.toBeInTheDocument();
+  });
 });

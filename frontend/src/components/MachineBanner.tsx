@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Info, AlertTriangle } from 'lucide-react';
+import { Cpu, AlertTriangle, Info } from 'lucide-react';
 import type { MachineResponse } from '../types/machine';
 import { MachineStatusBadge } from './StatusBadge';
 
@@ -11,52 +11,43 @@ export const MachineBanner: React.FC<MachineBannerProps> = ({ machine }) => {
   const isInactive = machine.status !== 'ACTIVE';
 
   return (
-    <div className="w-full glass-card rounded-3xl p-5 sm:p-6 mb-6 transition-all relative overflow-hidden">
-      {/* Subtle organic light accent */}
-      <div
-        aria-hidden="true"
-        className="absolute -top-12 -right-12 w-52 h-52 rounded-full pointer-events-none blur-xl"
-        style={{
-          background: 'radial-gradient(circle, rgba(216,243,106,0.22) 0%, rgba(34,197,94,0.12) 45%, rgba(18,61,50,0) 75%)',
-        }}
-      />
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-        <div>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className="px-3 py-1 rounded-xl bg-brand-primary/10 text-brand-primary font-mono font-bold text-xs tracking-wider border border-brand-primary/15">
-              {machine.machineId}
-            </span>
-            <MachineStatusBadge status={machine.status} />
+    <section aria-label="Thông tin máy bán hàng" className="mb-3.5 sm:mb-4">
+      {/* Compact Machine HUD Strip */}
+      <div className="w-full glass-card rounded-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 transition-all flex items-center justify-between gap-3 shadow-2xs border border-emerald-500/15">
+        {/* Machine Identity */}
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-emerald-500/20 flex items-center justify-center shrink-0 text-brand-primary">
+            <Cpu className="w-4 h-4" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-brand-primary tracking-tight">
-            {machine.name || `Máy bán hàng ${machine.machineId}`}
-          </h1>
-          <p className="text-xs sm:text-sm text-brand-text-muted flex items-center gap-1.5 mt-1.5 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-            <span>Vị trí hoạt động cố định • Quét mã QR trực tiếp tại thân máy</span>
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-bold text-xs sm:text-sm text-brand-primary tracking-wide">
+                {machine.machineId}
+              </span>
+              <span className="text-brand-text-subtle text-xs hidden sm:inline">•</span>
+              <h1 className="text-xs sm:text-sm font-bold text-brand-text truncate">
+                {machine.name || `Máy bán hàng ${machine.machineId}`}
+              </h1>
+            </div>
+            <p className="text-[11px] text-brand-text-muted hidden sm:block truncate mt-0.5">
+              Hệ thống bán hàng thông minh tự động nhả sản phẩm theo khay
+            </p>
+          </div>
         </div>
 
-        {/* Quick status box */}
-        <div className="flex items-center gap-3 p-3.5 rounded-2xl glass-surface text-xs text-brand-text shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-emerald-500/15 flex items-center justify-center shrink-0">
-            <Info className="w-4 h-4 text-brand-primary" />
-          </div>
-          <div className="leading-relaxed">
-            <span className="font-bold block text-brand-primary">Nhận hàng tự động</span>
-            Khay nhả hàng nằm tại ngăn bên dưới thân máy
-          </div>
+        {/* Machine Status Badge */}
+        <div className="shrink-0 flex items-center gap-2">
+          <MachineStatusBadge status={machine.status} />
         </div>
       </div>
 
-      {/* Warning message if machine is inactive or has a message */}
+      {/* Warning message if machine is inactive */}
       {isInactive && (
         <div
           id="machine-inactive-banner"
-          className="mt-4 p-4 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-900 text-sm flex items-start gap-3 backdrop-blur-sm"
+          className="mt-2.5 p-3 rounded-2xl bg-rose-50/90 border border-rose-200 text-rose-900 text-xs sm:text-sm flex items-start gap-2.5 backdrop-blur-sm shadow-2xs"
         >
-          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold block">Máy hiện đang tạm ngừng hoạt động!</span>
             <p className="text-xs text-rose-700 mt-0.5 leading-relaxed">
@@ -67,11 +58,11 @@ export const MachineBanner: React.FC<MachineBannerProps> = ({ machine }) => {
       )}
 
       {!isInactive && machine.message && (
-        <div className="mt-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5 backdrop-blur-sm">
+        <div className="mt-2.5 p-2.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center gap-2 backdrop-blur-sm shadow-2xs">
           <Info className="w-4 h-4 text-amber-600 shrink-0" />
-          <span className="font-medium">{machine.message}</span>
+          <span className="font-medium text-xs">{machine.message}</span>
         </div>
       )}
-    </div>
+    </section>
   );
 };

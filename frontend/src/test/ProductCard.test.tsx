@@ -34,6 +34,7 @@ describe('ProductCard', () => {
       </CartProvider>
     );
 
+    expect(screen.getByText('KHOANG 01')).toBeInTheDocument();
     expect(screen.getByText('Khay 01')).toBeInTheDocument();
     expect(screen.getByText('Nước suối Aqua 500ml')).toBeInTheDocument();
     expect(screen.getByText('8.000 ₫')).toBeInTheDocument();
@@ -48,6 +49,7 @@ describe('ProductCard', () => {
       </CartProvider>
     );
 
+    expect(screen.getByText('KHOANG 03')).toBeInTheDocument();
     expect(screen.getByText('Khay 03')).toBeInTheDocument();
     expect(screen.getByText('Kẹo cao su Doublemint')).toBeInTheDocument();
     expect(screen.getByText('5.000 ₫')).toBeInTheDocument();

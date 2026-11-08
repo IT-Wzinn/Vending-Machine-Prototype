@@ -32,44 +32,77 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
     }
   };
 
-  // Modern botanical placeholder colors per slot
-  const slotColors = [
-    'from-emerald-600/15 via-teal-600/10 to-transparent text-emerald-900',
-    'from-amber-600/15 via-orange-600/10 to-transparent text-amber-900',
-    'from-teal-700/15 via-emerald-700/10 to-transparent text-teal-900',
-  ];
-  const colorClass = slotColors[(product.slotNumber - 1) % slotColors.length] || slotColors[0];
-
   return (
-    <div
+    <article
       id={`product-card-${product.slotNumber}`}
+      aria-label={`${product.name} - Khoang 0${product.slotNumber}`}
       className={`group relative glass-card rounded-3xl transition-all duration-300 overflow-hidden flex flex-col justify-between ${
         isBuyable
           ? 'glass-card-hover'
-          : 'opacity-70 bg-white/40 backdrop-blur-md'
+          : 'opacity-75 bg-white/45 backdrop-blur-md grayscale-[20%]'
       }`}
     >
-      {/* Top badges: Slot and Stock */}
-      <div className="p-4 pb-0 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-extrabold tracking-wider uppercase bg-brand-primary/10 text-brand-primary border border-emerald-500/20 backdrop-blur-xs">
-          Khay 0{product.slotNumber}
-        </span>
+      {/* 1. Physical Compartment Identity (Slot Tag + Inventory Availability) */}
+      <div className="p-3.5 sm:p-4 pb-0 flex items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-xl text-xs font-extrabold tracking-wider bg-brand-primary/10 text-brand-primary border border-emerald-500/20 backdrop-blur-xs shadow-2xs">
+          {/* Stainless-Steel Vending Coil Motif Icon */}
+          <svg
+            className="w-3.5 h-3.5 text-brand-primary/75 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 12c0-3.3 2.7-6 6-6s6 2.7 6 6-2.7 6-6 6" />
+            <path d="M9 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4" />
+            <path d="M14 9.5c1.2.7 2 2 2 3.5 0 2.2-1.8 4-4 4" />
+          </svg>
+          <span className="font-mono text-[11px] font-black tracking-wider uppercase">
+            KHOANG 0{product.slotNumber}
+          </span>
+          <span className="text-brand-primary/30 text-[10px]" aria-hidden="true">•</span>
+          <span className="text-[11px] font-extrabold text-brand-primary">
+            Khay 0{product.slotNumber}
+          </span>
+        </div>
+
+        {/* 5. Inventory Availability State */}
         <StockBadge stockQuantity={product.stockQuantity} available={product.available} />
       </div>
 
-      {/* Product Image / Illustration */}
-      <div className="px-4 py-3 flex items-center justify-center">
+      {/* 2. Tactile Bay Product Chamber with Helical Coil Silhouette */}
+      <div className="px-3.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-center">
         <div
-          className={`w-full h-40 rounded-2xl flex items-center justify-center bg-gradient-to-br ${colorClass} border border-emerald-500/15 relative overflow-hidden backdrop-blur-xs shadow-inner`}
+          className="w-full h-40 sm:h-44 rounded-2xl flex items-center justify-center glass-chamber relative overflow-hidden group-hover:border-emerald-500/30 transition-colors"
         >
-          {/* Subtle top inner reflection */}
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
+          {/* Concentric Helical Dispense Coil Silhouette (Atmospheric Hardware Motif) */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none opacity-20 text-emerald-950/35 select-none transition-transform duration-500 group-hover:scale-105"
+            viewBox="0 0 200 160"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            aria-hidden="true"
+          >
+            <ellipse cx="100" cy="80" rx="66" ry="34" strokeDasharray="6 4" />
+            <ellipse cx="100" cy="80" rx="46" ry="24" />
+            <ellipse cx="100" cy="80" rx="26" ry="14" />
+            <path d="M34 80 Q100 24 166 80 Q100 136 34 80" strokeWidth="1.2" strokeOpacity="0.4" />
+          </svg>
+
+          {/* Subtle specular top highlight overlay */}
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
+
+          {/* Product Image / Graceful Fallback */}
           {imageSrc && !imageError ? (
             <img
               src={imageSrc}
               alt={product.name}
               onError={() => setImageError(true)}
-              className="w-full h-full object-contain p-2.5 transition-transform duration-300 group-hover:scale-105 drop-shadow-sm relative z-10"
+              className="w-full h-full object-contain p-2.5 sm:p-3 transition-transform duration-300 group-hover:scale-105 filter drop-shadow-[0_8px_14px_rgba(18,61,50,0.14)] relative z-10"
               loading="lazy"
             />
           ) : (
@@ -81,10 +114,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
         </div>
       </div>
 
-      {/* Details */}
-      <div className="px-4 pb-4 flex-1 flex flex-col justify-between gap-3.5">
+      {/* 3, 4, 6. Product Details, Price, and Add-to-Cart Action Tray */}
+      <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4 flex-1 flex flex-col justify-between gap-3">
         <div>
-          <h2 className="font-extrabold text-base sm:text-lg text-brand-text group-hover:text-brand-primary transition-colors line-clamp-1">
+          <h2 className="font-extrabold text-base sm:text-lg text-brand-text group-hover:text-brand-primary transition-colors line-clamp-1 tracking-tight">
             {product.name}
           </h2>
           {product.description ? (
@@ -96,8 +129,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
           )}
         </div>
 
-        {/* Price & Action */}
-        <div className="pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
+        {/* 4. Prominent Price & 6. Add-to-Cart Action */}
+        <div className="pt-2.5 sm:pt-3 border-t border-emerald-500/15 flex items-center justify-between gap-2">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-brand-text-muted block">Đơn giá</span>
             <span className="text-xl sm:text-2xl font-black text-brand-primary tracking-tight font-sans">
@@ -110,9 +143,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
             type="button"
             disabled={!isBuyable}
             onClick={handleAddToCart}
-            className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm min-h-[44px] min-w-[108px] transition-all duration-150 ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl font-bold text-xs sm:text-sm min-h-[44px] min-w-[108px] transition-all duration-150 ${
               isBuyable
-                ? 'bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating border border-emerald-400/25 cursor-pointer'
+                ? 'bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white shadow-md hover:shadow-floating border border-emerald-400/25 cursor-pointer focus-visible:outline-2 focus-visible:outline-emerald-500'
                 : 'bg-gray-200/60 text-gray-400 cursor-not-allowed border border-gray-300/40 backdrop-blur-xs'
             }`}
           >
@@ -150,6 +183,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 };

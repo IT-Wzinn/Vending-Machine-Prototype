@@ -14,6 +14,7 @@ import { getMachine, getProductCatalog } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { SylvaBackground } from '../components/SylvaBackground';
+import { MobileActionDock } from '../components/MobileActionDock';
 
 interface CustomerOrderPageProps {
   initialMachineId?: string;
@@ -128,11 +129,11 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
       <Navbar machine={machine} />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 relative z-10">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3.5 sm:px-4 py-3.5 sm:py-6 relative z-10 pb-28 sm:pb-8">
         {loading ? (
           <div>
             {/* Banner skeleton */}
-            <div className="w-full h-32 glass-card rounded-3xl animate-pulse mb-6 border border-emerald-500/15" />
+            <div className="w-full h-14 sm:h-16 glass-card rounded-2xl animate-pulse mb-4 border border-emerald-500/15" />
             {/* Catalog skeleton */}
             <CatalogSkeleton />
           </div>
@@ -149,16 +150,16 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
             {machine && <MachineBanner machine={machine} />}
 
             {/* Catalog Section Header */}
-            <div className="flex items-center justify-between gap-3 mb-5 glass-pill px-4 py-3 rounded-2xl shadow-2xs">
+            <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5 glass-pill px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl shadow-2xs">
               <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-brand-primary tracking-tight">Danh mục sản phẩm</h2>
-                <p className="text-xs text-brand-text-muted font-medium">Chọn món bằng cách bấm "Chọn mua" bên dưới</p>
+                <h2 className="text-base sm:text-xl font-extrabold text-brand-primary tracking-tight">Danh mục sản phẩm</h2>
+                <p className="text-[11px] sm:text-xs text-brand-text-muted font-medium">Chọn món bằng cách bấm "Chọn mua" bên dưới</p>
               </div>
               <button
                 type="button"
                 onClick={loadMachineData}
                 aria-label="Làm mới tồn kho"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-500/20 bg-white/75 hover:bg-white text-xs font-bold text-brand-primary transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer backdrop-blur-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-emerald-500/20 bg-white/75 hover:bg-white text-xs font-bold text-brand-primary transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer backdrop-blur-xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-brand-primary" />
                 <span className="hidden sm:inline">Cập nhật tồn kho</span>
@@ -175,7 +176,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.productId}
@@ -188,6 +189,16 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
           </div>
         )}
       </main>
+
+      {/* Mobile Floating Action Dock */}
+      <MobileActionDock
+        machineActive={isMachineActive}
+        onOpenCart={() => setIsCartOpen(true)}
+        onProceedToCheckout={() => {
+          setIsCartOpen(false);
+          setIsCheckoutOpen(true);
+        }}
+      />
 
       {/* Cart Drawer */}
       <CartDrawer

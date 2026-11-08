@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, Clock, AlertCircle, ShieldAlert, Loader2, Sparkles } from 'lucide-react';
+import {
+  X,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ShieldAlert,
+  Loader2,
+  Sparkles,
+  Copy,
+  Check,
+  RotateCw,
+  Radio,
+  PackageCheck,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { createOrder, getOrderStatus } from '../services/api';
 import { formatVnd } from '../utils/formatters';
+import { resolveProductImage } from '../utils/productImages';
 import type { Order, OrderStatus } from '../types/order';
 import { ApiError } from '../types/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -21,8 +35,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
   const [errorNotice, setErrorNotice] = useState<{ code: string; message: string; isPhase4Dependency?: boolean } | null>(
     null
   );
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Poll order status every 3s while order is PENDING_PAYMENT
+  // Poll order status every 3s while order is PENDING_PAYMENT, PAID, or DISPENSING
   useEffect(() => {
     if (!order || !isOpen) return;
 
@@ -63,7 +78,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
     setErrorNotice(null);
 
     try {
-      // Call actual endpoint according to API_CONTRACT.md §3.1
       const createdOrder = await createOrder({
         machineId,
         productId: currentItem.product.productId,
@@ -74,7 +88,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
       clearCart();
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        // Check if 404/not found which indicates Phase 4 order endpoint is not yet present on backend
         const isPhase4Dependency = err.status === 404 || err.code === 'NOT_FOUND';
         setErrorNotice({
           code: err.code,
@@ -94,6 +107,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
     }
   };
 
+  const handleCopy = (text: string, fieldName: string) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedField(fieldName);
+        setTimeout(() => setCopiedField(null), 2000);
+      });
+    }
+  };
+
   const getModalTitle = () => {
     if (!order) return 'Xác nhận đơn hàng';
     switch (order.status) {
@@ -109,28 +131,49 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
         return 'Cần đối soát giao dịch';
       case 'DISPENSE_FAILED':
         return 'Sự cố xuất hàng';
+      case 'CANCELLED':
+        return 'Đơn hàng đã hủy';
       default:
         return 'Thông tin thanh toán';
     }
   };
+
+  // Resolve product image for visual presentation
+  const orderProductImage = order?.product
+    ? resolveProductImage({
+        productId: order.product.productId,
+        name: order.product.name,
+        priceVnd: order.product.priceVnd,
+        slotNumber: 1,
+        stockQuantity: 1,
+        available: true,
+        description: null,
+        imageUrl: null,
+      })
+    : currentItem
+    ? resolveProductImage(currentItem.product)
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/55 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
-      <div className="min-h-full flex items-center justify-center p-4">
+      <div className="min-h-full flex items-center justify-center p-3 sm:p-4">
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="checkout-modal-title"
-          className="relative w-full max-w-lg glass-modal rounded-3xl shadow-2xl overflow-hidden transition-all my-8"
+          className="relative w-full max-w-lg glass-modal rounded-3xl shadow-2xl overflow-hidden transition-all my-6 sm:my-8 max-h-[92vh] flex flex-col border border-emerald-500/25"
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-emerald-500/15 flex items-center justify-between bg-white/40 backdrop-blur-md">
-            <h2 id="checkout-modal-title" className="font-bold text-lg text-brand-text">
-              {getModalTitle()}
-            </h2>
+          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-500/15 flex items-center justify-between bg-white/50 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-brand-primary animate-pulse" />
+              <h2 id="checkout-modal-title" className="font-extrabold text-base sm:text-lg text-brand-primary tracking-tight">
+                {getModalTitle()}
+              </h2>
+            </div>
             <button
               id="close-checkout-modal-btn"
               type="button"
@@ -142,29 +185,58 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
             </button>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6 overflow-y-auto">
             {order ? (
-              /* REAL ORDER PAYMENT PRESENTATION */
-              <div className="space-y-5">
+              /* REAL ORDER PAYMENT & SMART DISPENSE TERMINAL */
+              <div className="space-y-4">
                 {order.status === 'PAID' || order.status === 'DISPENSING' || order.status === 'COMPLETED' ? (
                   /* VERIFIED PAYMENT / DISPENSING / COMPLETED */
-                  <div className="space-y-4 text-center py-2" data-testid="payment-success-view">
-                    <div className={`w-16 h-16 ${order.status === 'DISPENSING' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center mx-auto`}>
-                      {order.status === 'DISPENSING' ? (
-                        <Loader2 className="w-10 h-10 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-10 h-10" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className={`text-base font-bold ${order.status === 'DISPENSING' ? 'text-blue-900' : 'text-emerald-900'}`}>
+                  <div className="space-y-4 text-center" data-testid="payment-success-view">
+                    {/* Status Hero Card */}
+                    <div
+                      className={`p-4 sm:p-5 rounded-3xl border transition-all ${
+                        order.status === 'COMPLETED'
+                          ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-950 shadow-sm'
+                          : order.status === 'DISPENSING'
+                          ? 'bg-blue-500/15 border-blue-500/35 text-blue-950 shadow-sm'
+                          : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-950'
+                      }`}
+                    >
+                      <div
+                        className={`w-14 h-14 sm:w-16 sm:h-16 ${
+                          order.status === 'COMPLETED'
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : order.status === 'DISPENSING'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-emerald-600 text-white shadow-md'
+                        } rounded-2xl flex items-center justify-center mx-auto mb-3`}
+                      >
+                        {order.status === 'COMPLETED' ? (
+                          <PackageCheck className="w-8 h-8 sm:w-9 sm:h-9" />
+                        ) : order.status === 'DISPENSING' ? (
+                          <RotateCw className="w-8 h-8 sm:w-9 sm:h-9 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9" />
+                        )}
+                      </div>
+
+                      <h3
+                        className={`text-base sm:text-lg font-black tracking-tight ${
+                          order.status === 'COMPLETED'
+                            ? 'text-emerald-900'
+                            : order.status === 'DISPENSING'
+                            ? 'text-blue-900'
+                            : 'text-emerald-900'
+                        }`}
+                      >
                         {order.status === 'COMPLETED'
                           ? 'Đã xuất hàng thành công!'
                           : order.status === 'DISPENSING'
                           ? 'Máy đang thực hiện nhả hàng...'
                           : 'Thanh toán đã được xác minh thành công!'}
                       </h3>
-                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+
+                      <p className="text-xs text-brand-text mt-1.5 leading-relaxed max-w-sm mx-auto">
                         {order.status === 'COMPLETED'
                           ? 'Sản phẩm đã được đưa ra khay nhận hàng bên dưới. Quý khách vui lòng lấy hàng. Cảm ơn quý khách!'
                           : order.status === 'DISPENSING'
@@ -173,10 +245,162 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl glass-surface text-left space-y-2 text-xs">
+                    {/* SMART DISPENSE TERMINAL — Physical Dispense Stepper */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl glass-surface border border-emerald-500/20 text-left space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-emerald-500/15">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-brand-primary flex items-center gap-1.5">
+                          <Radio className="w-3.5 h-3.5 text-brand-primary" />
+                          Tiến trình nhả hàng vật lý
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full font-mono font-bold text-[10px] bg-brand-primary/10 text-brand-primary border border-brand-primary/15">
+                          {order.status === 'COMPLETED'
+                            ? 'BƯỚC 4/4'
+                            : order.status === 'DISPENSING'
+                            ? 'BƯỚC 3/4'
+                            : 'BƯỚC 1/4'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 text-xs">
+                        {/* Step 1: Payment Verified */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-brand-primary">1. Xác nhận thanh toán</span>
+                              <span className="text-[10px] font-mono text-emerald-700 font-bold">XONG</span>
+                            </div>
+                            <p className="text-[11px] text-brand-text-muted mt-0.5">
+                              Giao dịch ngân hàng đã xác minh thành công qua SePay Webhook
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step 2: Command Dispatched via MQTT */}
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-xs ${
+                              order.status === 'DISPENSING' || order.status === 'COMPLETED'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-blue-500 text-white animate-pulse'
+                            }`}
+                          >
+                            {order.status === 'DISPENSING' || order.status === 'COMPLETED' ? (
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            ) : (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-brand-primary">2. Phát lệnh đến máy</span>
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  order.status === 'DISPENSING' || order.status === 'COMPLETED'
+                                    ? 'text-emerald-700'
+                                    : 'text-blue-700'
+                                }`}
+                              >
+                                {order.status === 'DISPENSING' || order.status === 'COMPLETED'
+                                  ? 'ĐÃ GỬI'
+                                  : 'ĐANG PHÁT...'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-brand-text-muted mt-0.5">
+                              Backend ghi nhận bản ghi bền vững và phát lệnh qua MQTT tới ESP32
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step 3: Motor Executing */}
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-xs ${
+                              order.status === 'COMPLETED'
+                                ? 'bg-emerald-500 text-white'
+                                : order.status === 'DISPENSING'
+                                ? 'bg-blue-500 text-white animate-spin'
+                                : 'bg-gray-200 text-gray-400'
+                            }`}
+                          >
+                            {order.status === 'COMPLETED' ? (
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            ) : order.status === 'DISPENSING' ? (
+                              <RotateCw className="w-3.5 h-3.5" />
+                            ) : (
+                              <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-brand-primary">3. Động cơ quay lò xo</span>
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  order.status === 'COMPLETED'
+                                    ? 'text-emerald-700'
+                                    : order.status === 'DISPENSING'
+                                    ? 'text-blue-700'
+                                    : 'text-gray-400'
+                                }`}
+                              >
+                                {order.status === 'COMPLETED'
+                                  ? 'XONG'
+                                  : order.status === 'DISPENSING'
+                                  ? 'ĐANG QUAY...'
+                                  : 'CHỜ'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-brand-text-muted mt-0.5">
+                              Động cơ khay xoay lò xo để đẩy sản phẩm ra khỏi ngăn chứa
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Step 4: Product Dispensed */}
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 shadow-xs ${
+                              order.status === 'COMPLETED'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-gray-200 text-gray-400'
+                            }`}
+                          >
+                            {order.status === 'COMPLETED' ? (
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            ) : (
+                              <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-brand-primary">4. Rơi vào máng nhận</span>
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  order.status === 'COMPLETED' ? 'text-emerald-700' : 'text-gray-400'
+                                }`}
+                              >
+                                {order.status === 'COMPLETED' ? 'XONG' : 'CHỜ'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-brand-text-muted mt-0.5">
+                              Hệ thống xác nhận chu kỳ nhả sản phẩm hoàn tất. Quý khách vui lòng lấy hàng tại máng nhận
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Details Summary */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl glass-surface text-left space-y-2 text-xs">
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Mã đơn hàng:</span>
                         <span className="font-mono font-bold text-brand-primary">{order.publicOrderCode}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Sản phẩm:</span>
+                        <span className="font-bold text-brand-text">{order.product?.name}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Số tiền đã xác minh:</span>
@@ -184,13 +408,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-brand-text-muted">Trạng thái:</span>
-                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                          order.status === 'COMPLETED'
-                            ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
-                            : order.status === 'DISPENSING'
-                            ? 'bg-blue-500/15 text-blue-800 border border-blue-500/30'
-                            : 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
-                        }`}>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
+                            order.status === 'COMPLETED'
+                              ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
+                              : order.status === 'DISPENSING'
+                              ? 'bg-blue-500/15 text-blue-800 border border-blue-500/30'
+                              : 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
+                          }`}
+                        >
                           {order.status === 'COMPLETED'
                             ? 'HOÀN TẤT (COMPLETED)'
                             : order.status === 'DISPENSING'
@@ -204,24 +430,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all min-h-[44px]"
+                        className="w-full py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all min-h-[44px] cursor-pointer"
                       >
-                        Hoàn tất / Đóng
+                        {order.status === 'COMPLETED' ? 'Lấy hàng & Đóng cửa sổ' : 'Hoàn tất / Đóng'}
                       </button>
                     </div>
                   </div>
                 ) : order.status === 'EXPIRED' ? (
                   /* EXPIRED ORDER */
                   <div className="space-y-4 text-center py-2" data-testid="payment-expired-view">
-                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
-                      <Clock className="w-10 h-10" />
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600 shadow-sm border border-amber-300/40">
+                      <Clock className="w-9 h-9" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-amber-900">
+                      <h3 className="text-base sm:text-lg font-bold text-amber-900">
                         Đơn hàng đã hết hạn thanh toán
                       </h3>
-                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
-                        Thời gian giữ chỗ 15 phút đã kết thúc và đơn hàng đã bị hủy tự động. Vui lòng đặt lại đơn mới.
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed max-w-sm mx-auto">
+                        Thời gian giữ chỗ 15 phút đã kết thúc và đơn hàng đã bị hủy tự động. Quý khách vui lòng đặt lại đơn mới.
                       </p>
                     </div>
 
@@ -242,7 +468,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px] cursor-pointer"
                       >
                         Đóng cửa sổ
                       </button>
@@ -251,14 +477,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                 ) : order.status === 'NEEDS_RECONCILIATION' ? (
                   /* NEEDS RECONCILIATION */
                   <div className="space-y-4 text-center py-2" data-testid="payment-reconciliation-view">
-                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-purple-600">
-                      <ShieldAlert className="w-10 h-10" />
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-purple-600 shadow-sm border border-purple-300/40">
+                      <ShieldAlert className="w-9 h-9" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-purple-900">
+                      <h3 className="text-base sm:text-lg font-bold text-purple-900">
                         Giao dịch cần đối soát
                       </h3>
-                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
+                      <p className="text-xs text-brand-text-muted mt-1.5 leading-relaxed max-w-sm mx-auto">
                         Hệ thống ghi nhận tiền chuyển đến sau khi đơn hết hạn hoặc có bất thường. Máy không xuất hàng để bảo vệ khách. Vui lòng chụp màn hình thông tin đơn và liên hệ hỗ trợ.
                       </p>
                     </div>
@@ -272,13 +498,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                         <span className="text-brand-text-muted">Nội dung đối soát:</span>
                         <span className="font-mono font-bold text-brand-primary">{order.payment?.transferReference}</span>
                       </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Trạng thái:</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-purple-500/15 text-purple-800 border border-purple-400/30 font-bold text-[10px]">
+                          CHỜ ĐỐI SOÁT (NEEDS_RECONCILIATION)
+                        </span>
+                      </div>
                     </div>
 
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px] cursor-pointer"
                       >
                         Đóng cửa sổ
                       </button>
@@ -287,23 +519,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                 ) : order.status === 'DISPENSE_FAILED' ? (
                   /* DISPENSE FAILED */
                   <div className="space-y-4 text-center py-2" data-testid="payment-dispense-failed-view">
-                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600">
-                      <AlertCircle className="w-10 h-10" />
+                    <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600 shadow-sm border border-rose-300/40">
+                      <AlertCircle className="w-9 h-9" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-rose-900">
+                      <h3 className="text-base sm:text-lg font-bold text-rose-900">
                         Sự cố khi xuất hàng
                       </h3>
-                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed">
-                        Máy gặp sự cố cơ cấu khi đẩy sản phẩm. Tiền của bạn đã được ghi nhận. Vui lòng liên hệ nhân viên vận hành để được hỗ trợ hoặc hoàn tiền.
+                      <p className="text-xs text-brand-text-muted mt-1.5 leading-relaxed max-w-sm mx-auto">
+                        Máy gặp sự cố cơ cấu khi đẩy sản phẩm. Thông tin giao dịch đã được hệ thống ghi nhận. Quý khách vui lòng liên hệ nhân viên vận hành để được kiểm tra và hỗ trợ theo quy định.
                       </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl glass-surface border-rose-300/40 text-left space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Mã đơn hàng:</span>
+                        <span className="font-mono font-bold text-brand-text">{order.publicOrderCode}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-brand-text-muted">Trạng thái:</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-800 border border-rose-400/30 font-bold text-[10px]">
+                          XUẤT HÀNG THẤT BẠI (DISPENSE_FAILED)
+                        </span>
+                      </div>
                     </div>
 
                     <div className="pt-2">
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px] cursor-pointer"
                       >
                         Đóng cửa sổ
                       </button>
@@ -312,30 +557,85 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                 ) : (
                   /* PENDING_PAYMENT: QR CODE & POLLING INDICATOR */
                   <>
-                    <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-center backdrop-blur-xs">
-                      <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-center backdrop-blur-xs">
+                      <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block mb-0.5">
                         Đơn hàng đã được tạo thành công
                       </span>
-                      <p className="font-mono text-sm font-bold text-brand-primary">{order.publicOrderCode}</p>
+                      <p className="font-mono text-sm sm:text-base font-bold text-brand-primary">{order.publicOrderCode}</p>
                     </div>
 
                     {/* QR Code Presentation */}
                     {order.payment && order.payment.paymentQrData ? (
-                      <div className="flex flex-col items-center justify-center p-5 sm:p-6 glass-surface rounded-2xl">
-                        <div className="p-3.5 bg-white rounded-2xl shadow-sm border border-gray-200/80 mb-3">
-                          <QRCodeSVG value={order.payment.paymentQrData} size={180} />
+                      <div className="flex flex-col items-center justify-center p-4 sm:p-5 glass-surface rounded-2xl border border-emerald-500/20 shadow-2xs">
+                        {/* Specular White QR Code Container */}
+                        <div className="p-3.5 bg-white rounded-2xl shadow-md border border-gray-200/90 mb-3 relative">
+                          <QRCodeSVG value={order.payment.paymentQrData} size={185} level="M" />
                         </div>
-                        <span className="text-xs font-medium text-brand-text-muted">Quét mã bằng ứng dụng Ngân hàng</span>
-                        <div className="mt-3 text-center space-y-1">
-                          <p className="text-xs font-semibold text-brand-text">
-                            Ngân hàng: {order.payment.bankName} • {order.payment.bankAccountNumber}
-                          </p>
-                          <p className="text-xs text-brand-text-muted">
-                            Chủ tài khoản: <span className="font-bold">{order.payment.bankAccountName}</span>
-                          </p>
-                          <p className="text-xs font-mono font-bold text-brand-primary">
-                            Nội dung CK: {order.payment.transferReference}
-                          </p>
+
+                        <span className="text-xs font-bold text-brand-primary">Quét mã bằng ứng dụng Ngân hàng</span>
+
+                        <div className="mt-3.5 w-full space-y-2 text-xs">
+                          {/* Bank & Account row with copy button */}
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/60 border border-emerald-500/15">
+                            <div className="text-left">
+                              <span className="text-[10px] uppercase font-bold text-brand-text-muted block">Ngân hàng & Số tài khoản</span>
+                              <span className="font-mono font-bold text-brand-text text-xs">
+                                {order.payment.bankName} • {order.payment.bankAccountNumber}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(order.payment.bankAccountNumber, 'acc')}
+                              aria-label="Sao chép số tài khoản"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary font-bold text-[11px] transition-colors cursor-pointer"
+                            >
+                              {copiedField === 'acc' ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Đã chép</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Chép STK</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Account holder */}
+                          <div className="flex justify-between items-center px-2.5 py-1 text-xs">
+                            <span className="text-brand-text-muted">Chủ tài khoản:</span>
+                            <span className="font-bold text-brand-text">{order.payment.bankAccountName}</span>
+                          </div>
+
+                          {/* Transfer reference with copy button */}
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-brand-primary/10 border border-brand-primary/20">
+                            <div className="text-left">
+                              <span className="text-[10px] uppercase font-bold text-brand-text-muted block">Nội dung chuyển khoản</span>
+                              <span className="font-mono font-bold text-brand-primary text-xs">
+                                Nội dung CK: {order.payment.transferReference}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(order.payment.transferReference, 'ref')}
+                              aria-label="Sao chép nội dung chuyển khoản"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-primary hover:bg-brand-primary-hover text-white font-bold text-[11px] transition-colors cursor-pointer"
+                            >
+                              {copiedField === 'ref' ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-brand-accent" />
+                                  <span>Đã chép</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Chép mã</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : null}
@@ -347,12 +647,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     </div>
 
                     {/* Amount & Time limit */}
-                    <div className="flex justify-between items-center p-4 rounded-2xl glass-surface text-sm">
-                      <div className="flex items-center gap-2 text-brand-text-muted font-medium">
+                    <div className="flex justify-between items-center p-3.5 sm:p-4 rounded-2xl glass-surface text-sm border border-emerald-500/15">
+                      <div className="flex items-center gap-2 text-brand-text-muted font-medium text-xs">
                         <Clock className="w-4 h-4 text-brand-primary" />
                         <span>Hạn thanh toán:</span>
                       </div>
-                      <span className="font-bold text-brand-primary">15 phút</span>
+                      <span className="font-bold text-brand-primary text-xs">15 phút</span>
                     </div>
 
                     <p className="text-[11px] text-center text-brand-text-subtle">
@@ -363,7 +663,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
+                        className="w-full py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px] cursor-pointer"
                       >
                         Đóng / Quay lại sau
                       </button>
@@ -373,7 +673,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
               </div>
             ) : (
               /* ORDER CONFIRMATION FLOW */
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {/* MVP Prototype Notice */}
                 <div className="p-3.5 rounded-2xl bg-brand-primary/10 border border-emerald-500/20 text-xs text-brand-primary flex items-start gap-2.5 backdrop-blur-xs">
                   <Sparkles className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
@@ -395,7 +695,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                           key={item.product.productId}
                           type="button"
                           onClick={() => setSelectedProductIndex(idx)}
-                          className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between text-xs transition-all ${
+                          className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
                             selectedProductIndex === idx
                               ? 'border-brand-primary bg-emerald-500/15 font-semibold shadow-xs'
                               : 'glass-surface text-brand-text-muted hover:border-emerald-500/30'
@@ -416,28 +716,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                   </div>
                 )}
 
-                {/* Selected Item Detail */}
+                {/* Selected Item Detail Card */}
                 {currentItem && (
-                  <div className="p-4 rounded-2xl glass-surface space-y-3">
-                    <div className="flex justify-between items-center text-sm">
+                  <div className="p-4 rounded-2xl glass-surface space-y-3 border border-emerald-500/15">
+                    {orderProductImage && (
+                      <div className="flex items-center gap-3 pb-3 border-b border-emerald-500/15">
+                        <div className="w-14 h-14 rounded-xl bg-white/70 border border-emerald-500/15 p-1 flex items-center justify-center shrink-0">
+                          <img
+                            src={orderProductImage}
+                            alt={currentItem.product.name}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-primary px-2 py-0.5 rounded-md bg-brand-primary/10">
+                            Khay 0{currentItem.product.slotNumber}
+                          </span>
+                          <h4 className="font-bold text-sm text-brand-text mt-1">{currentItem.product.name}</h4>
+                          <span className="text-xs font-black text-brand-primary">{formatVnd(currentItem.product.priceVnd)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-brand-text-muted">Mã máy bán hàng:</span>
                       <span className="font-mono font-bold text-brand-primary">{machineId}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-brand-text-muted">Sản phẩm:</span>
                       <span className="font-bold text-brand-text">{currentItem.product.name}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-brand-text-muted">Khay xuất hàng:</span>
                       <span className="font-semibold text-brand-text">Khay số {currentItem.product.slotNumber}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-brand-text-muted">Số lượng đơn hàng:</span>
                       <span className="font-semibold text-brand-text">1 sản phẩm</span>
                     </div>
                     <div className="pt-2 border-t border-emerald-500/15 flex justify-between items-center">
-                      <span className="text-sm font-bold text-brand-text">Tổng tiền thanh toán:</span>
-                      <span className="text-xl font-black text-brand-primary">
+                      <span className="text-xs sm:text-sm font-bold text-brand-text">Tổng tiền thanh toán:</span>
+                      <span className="text-lg sm:text-xl font-black text-brand-primary">
                         {formatVnd(currentItem.product.priceVnd)}
                       </span>
                     </div>
@@ -480,7 +799,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/60 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px]"
+                    className="flex-1 py-3 px-4 rounded-2xl border border-gray-300/60 bg-white/70 hover:bg-white text-xs sm:text-sm font-semibold text-brand-text transition-colors min-h-[44px] cursor-pointer"
                   >
                     Quay lại chọn món
                   </button>
@@ -489,7 +808,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     type="button"
                     disabled={loading || !currentItem}
                     onClick={handleCreateOrder}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all duration-150 disabled:bg-gray-300/60 disabled:cursor-not-allowed min-h-[44px]"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-brand-primary hover:bg-brand-primary-hover active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-floating border border-emerald-400/25 transition-all duration-150 disabled:bg-gray-300/60 disabled:cursor-not-allowed min-h-[44px] cursor-pointer"
                   >
                     {loading ? (
                       <>
