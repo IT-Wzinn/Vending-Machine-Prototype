@@ -107,10 +107,10 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
   // If machine does not exist or invalid code returned from backend
   if (!loading && error && (error.code === 'MACHINE_NOT_FOUND' || error.code === 'NOT_FOUND')) {
     return (
-      <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between relative">
+      <div className="min-h-screen bg-brand-bg/85 text-brand-text flex flex-col justify-between relative">
         <SylvaBackground />
         <Navbar machine={null} />
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 relative z-10">
           <InvalidMachinePage
             currentMachineId={machineId}
             errorMessage={error.message}
@@ -122,13 +122,13 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between relative">
+    <div className="min-h-screen bg-brand-bg/85 text-brand-text flex flex-col justify-between relative">
       <SylvaBackground />
       {/* Header */}
       <Navbar machine={machine} />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 relative z-10">
         {loading ? (
           <div>
             {/* Banner skeleton */}
@@ -149,25 +149,25 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
             {machine && <MachineBanner machine={machine} />}
 
             {/* Catalog Section Header */}
-            <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center justify-between gap-3 mb-5 glass-pill px-4 py-3 rounded-2xl shadow-2xs">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-brand-text">Danh mục sản phẩm</h2>
-                <p className="text-xs text-brand-text-muted">Chọn món bằng cách bấm "Chọn mua" bên dưới</p>
+                <h2 className="text-lg sm:text-xl font-extrabold text-brand-primary tracking-tight">Danh mục sản phẩm</h2>
+                <p className="text-xs text-brand-text-muted font-medium">Chọn món bằng cách bấm "Chọn mua" bên dưới</p>
               </div>
               <button
                 type="button"
                 onClick={loadMachineData}
                 aria-label="Làm mới tồn kho"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white hover:bg-gray-50 text-xs font-semibold text-brand-text-muted transition-colors shadow-2xs"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-border/80 bg-white/90 hover:bg-white text-xs font-bold text-brand-primary transition-all duration-150 shadow-2xs active:scale-95 cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className="w-3.5 h-3.5 text-brand-primary" />
                 <span className="hidden sm:inline">Cập nhật tồn kho</span>
               </button>
             </div>
 
             {/* Products Grid */}
             {products.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-brand-border p-8 text-center shadow-card">
+              <div className="glass-card rounded-3xl p-8 text-center shadow-card">
                 <AlertCircle className="w-10 h-10 text-brand-text-muted mx-auto mb-2" />
                 <h3 className="font-bold text-base text-brand-text">Không có sản phẩm</h3>
                 <p className="text-xs text-brand-text-muted mt-1">
@@ -175,7 +175,7 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
                 {products.map((product) => (
                   <ProductCard
                     key={product.productId}
@@ -206,22 +206,22 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
       />
 
       {/* Footer */}
-      <footer className="w-full border-t border-brand-border/60 bg-white/60 py-6 text-center text-xs text-brand-text-muted mt-12">
+      <footer className="w-full glass-header py-6 text-center text-xs text-brand-text-muted mt-12 relative z-10">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-brand-primary" />
-              <span className="font-semibold text-brand-primary">Smart Vending Machine Prototype</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-brand-primary shadow-xs" />
+              <span className="font-bold text-brand-primary">Smart Vending Machine Prototype</span>
             </div>
             <span className="text-brand-text-subtle hidden sm:inline">•</span>
             <a
               href="/admin"
-              className="text-[11px] font-semibold text-brand-text-muted hover:text-brand-primary hover:underline transition-colors"
+              className="text-[11px] font-bold text-brand-primary/85 hover:text-brand-primary hover:underline transition-colors"
             >
               Cổng quản trị đối soát
             </a>
           </div>
-          <p className="text-[11px] text-brand-text-subtle">
+          <p className="text-[11px] text-brand-text-muted font-medium">
             Hệ thống bán hàng tự động tích hợp ESP32 • Spring Boot • React TypeScript
           </p>
         </div>

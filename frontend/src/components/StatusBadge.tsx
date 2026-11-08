@@ -41,7 +41,7 @@ interface StockBadgeProps {
 export const StockBadge: React.FC<StockBadgeProps> = ({ stockQuantity, available }) => {
   if (!available || stockQuantity <= 0) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100/90 text-gray-500 border border-gray-300/60 shadow-2xs">
         Hết hàng
       </span>
     );
@@ -49,14 +49,14 @@ export const StockBadge: React.FC<StockBadgeProps> = ({ stockQuantity, available
 
   if (stockQuantity <= 2) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50/90 text-amber-800 border border-amber-300/60 shadow-2xs">
         Sắp hết: {stockQuantity}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50/90 text-emerald-800 border border-emerald-300/60 shadow-2xs">
       Còn hàng: {stockQuantity}
     </span>
   );
