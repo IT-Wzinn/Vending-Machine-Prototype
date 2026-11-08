@@ -13,6 +13,7 @@ import { ApiError } from '../types/api';
 import { getMachine, getProductCatalog } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { RefreshCw, AlertCircle } from 'lucide-react';
+import { SylvaBackground } from '../components/SylvaBackground';
 
 interface CustomerOrderPageProps {
   initialMachineId?: string;
@@ -106,7 +107,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
   // If machine does not exist or invalid code returned from backend
   if (!loading && error && (error.code === 'MACHINE_NOT_FOUND' || error.code === 'NOT_FOUND')) {
     return (
-      <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between">
+      <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between relative">
+        <SylvaBackground />
         <Navbar machine={null} />
         <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
           <InvalidMachinePage
@@ -120,7 +122,8 @@ export const CustomerOrderPage: React.FC<CustomerOrderPageProps> = ({ initialMac
   }
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between">
+    <div className="min-h-screen bg-brand-bg text-brand-text flex flex-col justify-between relative">
+      <SylvaBackground />
       {/* Header */}
       <Navbar machine={machine} />
 
