@@ -195,7 +195,9 @@ describe('CheckoutModal Component', () => {
       { timeout: 4000 }
     );
 
-    expect(screen.getByText('Giao dịch cần đối soát')).toBeInTheDocument();
+    expect(screen.getByText('Thanh toán thành công nhưng chưa nhận được sản phẩm')).toBeInTheDocument();
+    expect(screen.getByText(/Giao dịch của bạn đã được ghi nhận, tuy nhiên máy bán hàng chưa thể hoàn tất việc giao sản phẩm\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Vui lòng liên hệ bộ phận Hỗ trợ để được kiểm tra và hỗ trợ hoàn tiền\./i)).toBeInTheDocument();
   });
 
   it('displays DISPENSING view with Smart Dispense Terminal steps when backend transitions to DISPENSING', async () => {
@@ -303,8 +305,9 @@ describe('CheckoutModal Component', () => {
       { timeout: 4000 }
     );
 
-    expect(screen.getByText('Sự cố khi xuất hàng')).toBeInTheDocument();
-    expect(screen.getByText(/Máy gặp sự cố cơ cấu khi đẩy sản phẩm/i)).toBeInTheDocument();
+    expect(screen.getByText('Thanh toán thành công nhưng chưa nhận được sản phẩm')).toBeInTheDocument();
+    expect(screen.getByText(/Giao dịch của bạn đã được ghi nhận, tuy nhiên máy bán hàng chưa thể hoàn tất việc giao sản phẩm\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Vui lòng liên hệ bộ phận Hỗ trợ để được kiểm tra và hỗ trợ hoàn tiền\./i)).toBeInTheDocument();
   });
 
   it('allows copying bank account number and transfer reference to clipboard', async () => {

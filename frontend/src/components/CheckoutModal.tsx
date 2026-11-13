@@ -482,10 +482,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     </div>
                     <div>
                       <h3 className="text-base sm:text-lg font-bold text-purple-900">
-                        Giao dịch cần đối soát
+                        Thanh toán thành công nhưng chưa nhận được sản phẩm
                       </h3>
                       <p className="text-xs text-brand-text-muted mt-1.5 leading-relaxed max-w-sm mx-auto">
-                        Hệ thống ghi nhận tiền chuyển đến sau khi đơn hết hạn hoặc có bất thường. Máy không xuất hàng để bảo vệ khách. Vui lòng chụp màn hình thông tin đơn và liên hệ hỗ trợ.
+                        Giao dịch của bạn đã được ghi nhận, tuy nhiên máy bán hàng chưa thể hoàn tất việc giao sản phẩm.
+                      </p>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed max-w-sm mx-auto">
+                        Vui lòng liên hệ bộ phận Hỗ trợ để được kiểm tra và hỗ trợ hoàn tiền.
                       </p>
                     </div>
 
@@ -524,10 +527,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ machineId, isOpen,
                     </div>
                     <div>
                       <h3 className="text-base sm:text-lg font-bold text-rose-900">
-                        Sự cố khi xuất hàng
+                        Thanh toán thành công nhưng chưa nhận được sản phẩm
                       </h3>
                       <p className="text-xs text-brand-text-muted mt-1.5 leading-relaxed max-w-sm mx-auto">
-                        Máy gặp sự cố cơ cấu khi đẩy sản phẩm. Thông tin giao dịch đã được hệ thống ghi nhận. Quý khách vui lòng liên hệ nhân viên vận hành để được kiểm tra và hỗ trợ theo quy định.
+                        Giao dịch của bạn đã được ghi nhận, tuy nhiên máy bán hàng chưa thể hoàn tất việc giao sản phẩm.
+                      </p>
+                      <p className="text-xs text-brand-text-muted mt-1 leading-relaxed max-w-sm mx-auto">
+                        Vui lòng liên hệ bộ phận Hỗ trợ để được kiểm tra và hỗ trợ hoàn tiền.
                       </p>
                     </div>
 
