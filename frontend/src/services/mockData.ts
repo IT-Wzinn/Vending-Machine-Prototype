@@ -30,6 +30,8 @@ export const MOCK_PRODUCTS_VM001: Product[] = [
     priceVnd: 8000,
     slotNumber: 1,
     stockQuantity: 5,
+    reservedQuantity: 0,
+    availableStock: 5,
     available: true,
   },
   {
@@ -40,6 +42,8 @@ export const MOCK_PRODUCTS_VM001: Product[] = [
     priceVnd: 15000,
     slotNumber: 2,
     stockQuantity: 3,
+    reservedQuantity: 0,
+    availableStock: 3,
     available: true,
   },
   {
@@ -50,6 +54,8 @@ export const MOCK_PRODUCTS_VM001: Product[] = [
     priceVnd: 5000,
     slotNumber: 3,
     stockQuantity: 0,
+    reservedQuantity: 0,
+    availableStock: 0,
     available: false,
   },
 ];

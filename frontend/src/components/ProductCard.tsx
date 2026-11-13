@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Check, AlertCircle, Package } from 'lucide-react';
-import type { Product } from '../types/product';
+import { getAvailableStock, type Product } from '../types/product';
 import { formatVnd } from '../utils/formatters';
 import { resolveProductImage } from '../utils/productImages';
 import { StockBadge } from './StatusBadge';
@@ -16,7 +16,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
   const [imageError, setImageError] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const isBuyable = machineActive && product.available && product.stockQuantity > 0;
+  const effectiveAvailableStock = getAvailableStock(product);
+  const isBuyable = machineActive && product.available && effectiveAvailableStock > 0;
   const imageSrc = resolveProductImage(product);
 
   const handleAddToCart = () => {
@@ -103,7 +104,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, machineActive
                 <span>•</span>
                 <span>Khay 0{product.slotNumber}</span>
               </div>
-              <StockBadge stockQuantity={product.stockQuantity} available={product.available} />
+              <StockBadge
+                stockQuantity={product.stockQuantity}
+                reservedQuantity={product.reservedQuantity}
+                availableStock={effectiveAvailableStock}
+                available={product.available}
+              />
             </div>
           </div>
 

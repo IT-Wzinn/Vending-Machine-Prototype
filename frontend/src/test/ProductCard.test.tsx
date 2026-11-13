@@ -98,4 +98,79 @@ describe('ProductCard', () => {
 
     expect(screen.getByText('Đã thêm vào giỏ!')).toBeInTheDocument();
   });
+
+  it('renders out-of-stock when availableStock is 0 even if physical stockQuantity > 0 (Aqua incident scenario)', () => {
+    const aquaReservedProduct: Product = {
+      productId: 'prod-aqua-held',
+      name: 'Nước suối Aqua 500ml',
+      description: 'Nước uống tinh khiết chai 500ml',
+      imageUrl: null,
+      priceVnd: 8000,
+      slotNumber: 1,
+      stockQuantity: 2,
+      reservedQuantity: 2,
+      availableStock: 0,
+      available: false,
+    };
+
+    render(
+      <CartProvider>
+        <ProductCard product={aquaReservedProduct} />
+      </CartProvider>
+    );
+
+    expect(screen.getAllByText('Hết hàng').length).toBeGreaterThanOrEqual(1);
+    const button = screen.getByRole('button', { name: /Hết hàng/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('renders low-stock badge and enables buying when availableStock is 1 (stock 2, reserved 1)', () => {
+    const aquaLowStockProduct: Product = {
+      productId: 'prod-aqua-low',
+      name: 'Nước suối Aqua 500ml',
+      description: 'Nước uống tinh khiết chai 500ml',
+      imageUrl: null,
+      priceVnd: 8000,
+      slotNumber: 1,
+      stockQuantity: 2,
+      reservedQuantity: 1,
+      availableStock: 1,
+      available: true,
+    };
+
+    render(
+      <CartProvider>
+        <ProductCard product={aquaLowStockProduct} />
+      </CartProvider>
+    );
+
+    expect(screen.getByText('Sắp hết: 1')).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: /Chọn mua/i });
+    expect(button).toBeEnabled();
+  });
+
+  it('renders out-of-stock and disables button when availableStock is omitted with stockQuantity = 2 and reservedQuantity = 2', () => {
+    const legacyAquaHeldProduct: Product = {
+      productId: 'prod-aqua-legacy-held',
+      name: 'Nước suối Aqua 500ml',
+      description: 'Nước uống tinh khiết chai 500ml',
+      imageUrl: null,
+      priceVnd: 8000,
+      slotNumber: 1,
+      stockQuantity: 2,
+      reservedQuantity: 2,
+      // availableStock omitted (legacy API response)
+      available: true,
+    };
+
+    render(
+      <CartProvider>
+        <ProductCard product={legacyAquaHeldProduct} />
+      </CartProvider>
+    );
+
+    expect(screen.getAllByText('Hết hàng').length).toBeGreaterThanOrEqual(1);
+    const button = screen.getByRole('button', { name: /Hết hàng/i });
+    expect(button).toBeDisabled();
+  });
 });

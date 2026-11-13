@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Product } from '../types/product';
+import { getAvailableStock, type Product } from '../types/product';
 
 export interface CartItem {
   product: Product;
@@ -41,7 +41,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [items]);
 
   const addToCart = (product: Product, qty = 1): { success: boolean; message?: string } => {
-    if (!product.available || product.stockQuantity <= 0) {
+    const effectiveStock = getAvailableStock(product);
+    if (!product.available || effectiveStock <= 0) {
       return { success: false, message: 'Sản phẩm đã hết hàng trong máy.' };
     }
 
@@ -55,10 +56,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentQty = items[existingIndex].quantity;
       const newQty = currentQty + qty;
 
-      if (newQty > product.stockQuantity) {
+      if (newQty > effectiveStock) {
         return {
           success: false,
-          message: `Chỉ còn ${product.stockQuantity} sản phẩm trong khay số ${product.slotNumber}.`,
+          message: `Chỉ còn ${effectiveStock} sản phẩm trong khay số ${product.slotNumber}.`,
         };
       }
 
@@ -70,10 +71,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setItems(updated);
       return { success: true };
     } else {
-      if (qty > product.stockQuantity) {
+      if (qty > effectiveStock) {
         return {
           success: false,
-          message: `Chỉ còn ${product.stockQuantity} sản phẩm trong khay số ${product.slotNumber}.`,
+          message: `Chỉ còn ${effectiveStock} sản phẩm trong khay số ${product.slotNumber}.`,
         };
       }
 
@@ -91,10 +92,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const item = items.find((i) => i.product.productId === productId);
     if (!item) return { success: false, message: 'Sản phẩm không có trong giỏ hàng.' };
 
-    if (qty > item.product.stockQuantity) {
+    const effectiveStock = getAvailableStock(item.product);
+    if (qty > effectiveStock) {
       return {
         success: false,
-        message: `Số lượng tối đa có thể chọn là ${item.product.stockQuantity}.`,
+        message: `Số lượng tối đa có thể chọn là ${effectiveStock}.`,
       };
     }
 

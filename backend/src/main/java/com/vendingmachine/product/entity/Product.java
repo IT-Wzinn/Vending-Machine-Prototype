@@ -84,7 +84,7 @@ public class Product {
     }
 
     public boolean isAvailable() {
-        return Boolean.TRUE.equals(isActive) && (stockQuantity != null && stockQuantity > 0);
+        return Boolean.TRUE.equals(isActive) && getAvailableStock() > 0;
     }
 
     public int getAvailableStock() {

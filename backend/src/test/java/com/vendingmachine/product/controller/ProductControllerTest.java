@@ -46,6 +46,8 @@ class ProductControllerTest {
                 8000,
                 1,
                 5,
+                0,
+                5,
                 true
         );
 
@@ -56,6 +58,8 @@ class ProductControllerTest {
                 null,
                 5000,
                 3,
+                0,
+                0,
                 0,
                 false
         );
@@ -72,8 +76,12 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.products[0].priceVnd").value(8000))
                 .andExpect(jsonPath("$.data.products[0].slotNumber").value(1))
                 .andExpect(jsonPath("$.data.products[0].stockQuantity").value(5))
+                .andExpect(jsonPath("$.data.products[0].reservedQuantity").value(0))
+                .andExpect(jsonPath("$.data.products[0].availableStock").value(5))
                 .andExpect(jsonPath("$.data.products[0].available").value(true))
                 .andExpect(jsonPath("$.data.products[1].name").value("Kẹo cao su Doublemint"))
+                .andExpect(jsonPath("$.data.products[1].stockQuantity").value(0))
+                .andExpect(jsonPath("$.data.products[1].availableStock").value(0))
                 .andExpect(jsonPath("$.data.products[1].available").value(false));
     }
 

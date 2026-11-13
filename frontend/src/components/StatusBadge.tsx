@@ -1,5 +1,6 @@
 import React from 'react';
 import type { MachineStatus } from '../types/machine';
+import { getAvailableStock } from '../types/product';
 
 interface MachineStatusBadgeProps {
   status: MachineStatus;
@@ -34,12 +35,21 @@ export const MachineStatusBadge: React.FC<MachineStatusBadgeProps> = ({ status }
 };
 
 interface StockBadgeProps {
-  stockQuantity: number;
+  stockQuantity?: number;
+  reservedQuantity?: number;
+  availableStock?: number;
   available: boolean;
 }
 
-export const StockBadge: React.FC<StockBadgeProps> = ({ stockQuantity, available }) => {
-  if (!available || stockQuantity <= 0) {
+export const StockBadge: React.FC<StockBadgeProps> = ({
+  stockQuantity = 0,
+  reservedQuantity = 0,
+  availableStock,
+  available,
+}) => {
+  const effectiveStock = getAvailableStock({ stockQuantity, reservedQuantity, availableStock });
+
+  if (!available || effectiveStock <= 0) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-200/60 text-gray-600 border border-gray-300/50 backdrop-blur-xs shadow-2xs">
         Hết hàng
@@ -47,17 +57,17 @@ export const StockBadge: React.FC<StockBadgeProps> = ({ stockQuantity, available
     );
   }
 
-  if (stockQuantity <= 2) {
+  if (effectiveStock <= 2) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-900 border border-amber-400/40 backdrop-blur-xs shadow-2xs">
-        Sắp hết: {stockQuantity}
+        Sắp hết: {effectiveStock}
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-900 border border-emerald-400/40 backdrop-blur-xs shadow-2xs">
-      Còn hàng: {stockQuantity}
+      Còn hàng: {effectiveStock}
     </span>
   );
 };

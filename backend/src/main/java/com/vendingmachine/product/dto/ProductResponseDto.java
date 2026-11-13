@@ -12,13 +12,16 @@ public class ProductResponseDto {
     private Integer priceVnd;
     private Integer slotNumber;
     private Integer stockQuantity;
+    private Integer reservedQuantity;
+    private Integer availableStock;
     private Boolean available;
 
     public ProductResponseDto() {
     }
 
     public ProductResponseDto(UUID productId, String name, String description, String imageUrl,
-                              Integer priceVnd, Integer slotNumber, Integer stockQuantity, Boolean available) {
+                              Integer priceVnd, Integer slotNumber, Integer stockQuantity,
+                              Integer reservedQuantity, Integer availableStock, Boolean available) {
         this.productId = productId;
         this.name = name;
         this.description = description;
@@ -26,7 +29,14 @@ public class ProductResponseDto {
         this.priceVnd = priceVnd;
         this.slotNumber = slotNumber;
         this.stockQuantity = stockQuantity;
+        this.reservedQuantity = reservedQuantity;
+        this.availableStock = availableStock;
         this.available = available;
+    }
+
+    public ProductResponseDto(UUID productId, String name, String description, String imageUrl,
+                              Integer priceVnd, Integer slotNumber, Integer stockQuantity, Boolean available) {
+        this(productId, name, description, imageUrl, priceVnd, slotNumber, stockQuantity, 0, stockQuantity, available);
     }
 
     public static ProductResponseDto fromEntity(Product product) {
@@ -38,6 +48,8 @@ public class ProductResponseDto {
                 product.getPriceVnd(),
                 product.getSlotNumber(),
                 product.getStockQuantity(),
+                product.getReservedQuantity(),
+                product.getAvailableStock(),
                 product.isAvailable()
         );
     }
@@ -96,6 +108,22 @@ public class ProductResponseDto {
 
     public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public Integer getReservedQuantity() {
+        return reservedQuantity;
+    }
+
+    public void setReservedQuantity(Integer reservedQuantity) {
+        this.reservedQuantity = reservedQuantity;
+    }
+
+    public Integer getAvailableStock() {
+        return availableStock;
+    }
+
+    public void setAvailableStock(Integer availableStock) {
+        this.availableStock = availableStock;
     }
 
     public Boolean getAvailable() {

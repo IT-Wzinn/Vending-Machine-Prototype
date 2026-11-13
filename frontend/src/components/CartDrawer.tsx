@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { formatVnd } from '../utils/formatters';
+import { getAvailableStock } from '../types/product';
 
 interface CartDrawerProps {
   onProceedToCheckout: () => void;
@@ -62,66 +63,71 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout, mac
                 </p>
               </div>
             ) : (
-              items.map((item) => (
-                <div
-                  key={item.product.productId}
-                  id={`cart-item-${item.product.productId}`}
-                  className="p-3.5 rounded-2xl glass-surface flex items-center justify-between gap-3 transition-all hover:border-emerald-500/35"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-brand-primary/10 text-brand-primary border border-brand-primary/15">
-                        Khay 0{item.product.slotNumber}
-                      </span>
-                      <span className="text-xs text-brand-text-muted font-medium">
-                        Tồn: {item.product.stockQuantity}
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-sm text-brand-text truncate">
-                      {item.product.name}
-                    </h4>
-                    <p className="text-xs font-black text-brand-primary mt-0.5">
-                      {formatVnd(item.product.priceVnd)}
-                    </p>
-                  </div>
+              items.map((item) => {
+                const maxAvailable = getAvailableStock(item.product);
+                const isMaxReached = item.quantity >= maxAvailable;
 
-                  {/* Quantity controls */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.product.productId, item.quantity - 1)}
-                      className="w-8 h-8 rounded-xl bg-white/80 border border-brand-border hover:bg-white active:scale-95 flex items-center justify-center text-brand-text shadow-2xs transition-all min-h-[32px]"
-                      aria-label="Giảm số lượng"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="w-7 text-center font-extrabold text-sm text-brand-text">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={item.quantity >= item.product.stockQuantity}
-                      onClick={() => updateQuantity(item.product.productId, item.quantity + 1)}
-                      className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all min-h-[32px] ${
-                        item.quantity >= item.product.stockQuantity
-                          ? 'bg-gray-100/60 text-gray-400 border-gray-200/50 cursor-not-allowed'
-                          : 'bg-white/80 border-brand-border hover:bg-white active:scale-95 text-brand-text shadow-2xs'
-                      }`}
-                      aria-label="Tăng số lượng"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(item.product.productId)}
-                      className="w-8 h-8 ml-1 rounded-xl hover:bg-rose-50 text-gray-400 hover:text-rose-600 flex items-center justify-center transition-colors min-h-[32px]"
-                      aria-label="Xóa sản phẩm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                return (
+                  <div
+                    key={item.product.productId}
+                    id={`cart-item-${item.product.productId}`}
+                    className="p-3.5 rounded-2xl glass-surface flex items-center justify-between gap-3 transition-all hover:border-emerald-500/35"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-brand-primary/10 text-brand-primary border border-brand-primary/15">
+                          Khay 0{item.product.slotNumber}
+                        </span>
+                        <span className="text-xs text-brand-text-muted font-medium">
+                          Tồn: {maxAvailable}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-sm text-brand-text truncate">
+                        {item.product.name}
+                      </h4>
+                      <p className="text-xs font-black text-brand-primary mt-0.5">
+                        {formatVnd(item.product.priceVnd)}
+                      </p>
+                    </div>
+
+                    {/* Quantity controls */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.product.productId, item.quantity - 1)}
+                        className="w-8 h-8 rounded-xl bg-white/80 border border-brand-border hover:bg-white active:scale-95 flex items-center justify-center text-brand-text shadow-2xs transition-all min-h-[32px]"
+                        aria-label="Giảm số lượng"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="w-7 text-center font-extrabold text-sm text-brand-text">
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={isMaxReached}
+                        onClick={() => updateQuantity(item.product.productId, item.quantity + 1)}
+                        className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all min-h-[32px] ${
+                          isMaxReached
+                            ? 'bg-gray-100/60 text-gray-400 border-gray-200/50 cursor-not-allowed'
+                            : 'bg-white/80 border-brand-border hover:bg-white active:scale-95 text-brand-text shadow-2xs'
+                        }`}
+                        aria-label="Tăng số lượng"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.product.productId)}
+                        className="w-8 h-8 ml-1 rounded-xl hover:bg-rose-50 text-gray-400 hover:text-rose-600 flex items-center justify-center transition-colors min-h-[32px]"
+                        aria-label="Xóa sản phẩm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
